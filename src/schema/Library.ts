@@ -29,7 +29,7 @@ const internalTypes = {
     'union': UnionType
 };
 
-export default class Library {
+export class Library {
 
     private readonly _internalTypes: Map<string, Type> = new Map<string, Type>();
     public readonly types: Map<string, Type> = new Map<string, Type>();
@@ -88,14 +88,15 @@ export default class Library {
 
     createType(decl: spec10.TypeDeclaration): Type {
         let inst;
-        const types = Array.isArray(decl.type) ? decl.type : [decl.type];
+        const types = decl.type ?
+            (Array.isArray(decl.type) ? decl.type : [decl.type]) : ['object'];
         for (const n of types) {
             const baseType = this.getType(n);
             if (inst)
-                inst.mix(baseType);
+                inst.set(baseType);
             else inst = baseType.extend(decl.name);
         }
-        inst.mix(decl);
+        inst.set(decl);
         return inst;
     }
 

@@ -1,7 +1,6 @@
-import Type, {ICoerceOptions} from './Type';
+import Type, {InternalValidateFunction, IValidateOptions, LogFunction} from './Type';
 import * as spec10 from "../spec10";
-import Library from "./Library";
-import {ValidationError} from "../ValidationError";
+import {errors} from "raml-1-parser/dist/parser/wrapped-ast/parserCore";
 
 export default class ObjectType extends Type {
 
@@ -12,13 +11,26 @@ export default class ObjectType extends Type {
     public maxProperties?: number;
     public additionalProperties?: boolean = true;
 
-    mix(src: ObjectType | spec10.ObjectTypeDeclaration) {
-        super.mix(src);
+    set(src: ObjectType | spec10.ObjectTypeDeclaration) {
+        super.set(src);
         this._copyProperties(src,
             ['discriminator', 'discriminatorValue', 'minProperties', 'maxProperties', 'additionalProperties']);
-        if (Array.isArray(src.properties)) {
-            for (const prop of src.properties) {
-                this.properties[prop.name] = this.library.getType(prop);
+        if (src instanceof ObjectType)
+            Object.assign(this.properties, src.properties);
+        else {
+            const addProperty = (name, prop) => {
+                const t = this.library.getType(prop);
+                t.name = name;
+                this.properties[name] = t;
+            };
+            if (Array.isArray(src.properties)) {
+                for (const prop of src.properties) {
+                    addProperty(prop.name, prop);
+                }
+            } else if (typeof src.properties === 'object') {
+                for (const k of Object.keys(src.properties)) {
+                    addProperty(k, src.properties[k]);
+                }
             }
         }
     }
@@ -27,43 +39,120 @@ export default class ObjectType extends Type {
         return 'object';
     }
 
-    protected _getJSCoercer() {
+    protected _generateValidateFunction(options: IValidateOptions): InternalValidateFunction {
+        const superValidate = super._generateValidateFunction(options);
         const {
             discriminator,
-            discriminatorValue,
             minProperties,
             maxProperties,
             additionalProperties
         } = this;
-        const propertyKeys = Object.keys(this.properties);
-        return (v: any, options?: ICoerceOptions) => {
-            const location = (options && options.location) || '';
-            if (typeof v !== 'object')
-                throw new ValidationError(
-                    `Value is not an object`, 'Type error', location);
-            const keys = Object.keys(v);
-            if (!additionalProperties) {
-                const a = keys.filter(x => !propertyKeys.includes(x));
-                if (a.length)
-                    throw new ValidationError(
-                        `Additional properties (${a.join(',')}) is not accepted`,
-                        'Additional properties is not accepted error', location);
+        const removeAdditional = options.removeAdditional === 'all' ||
+            (options.removeAdditional && !additionalProperties);
+        const discriminatorValue = this.discriminatorValue || this.name;
+        const properties = this.properties;
+        const propertyKeys = Object.keys(properties);
+        const propertyCoercers = {};
+        for (const k of propertyKeys) {
+            // noinspection TypeScriptUnresolvedFunction
+            // @ts-ignore
+            propertyCoercers[k] = properties[k]._generateValidateFunction(options);
+        }
+
+        return (value: any, path: string, log?: LogFunction) => {
+            value = superValidate(value, path, log);
+            if (value == null)
+                return value;
+
+            if (typeof value !== 'object' || Array.isArray(value)) {
+                log({
+                        message: 'Value must be an object',
+                        errorType: 'TypeError',
+                        path
+                    }
+                );
+                return;
             }
 
-            if (minProperties && keys.length < minProperties)
-                throw new ValidationError(
-                    `Minimum accepted properties ${minProperties}, actual${keys.length}`,
-                    'Value length out of range error', location);
-            if (maxProperties && keys.length > maxProperties)
-                throw new ValidationError(
-                    `Maximum accepted properties ${maxProperties}, actual${keys.length}`,
-                    'Value length out of range error', location);
-            return v;
-        };
-    }
+            if (discriminator && value[discriminator] !== discriminatorValue) {
+                log({
+                        message: `Object ${discriminator} value must be "${discriminatorValue}"`,
+                        errorType: 'TypeError',
+                        log,
+                        discriminatorValue,
+                        actual: value[discriminator],
+                    }
+                );
+                return;
+            }
+            const keys = Object.keys(value);
+            const allErrors = options && options.allErrors;
 
-    protected _getJSONCoercer() {
-        return this._getJSCoercer();
+            // Check additional properties
+            if (!additionalProperties && !allErrors && !removeAdditional &&
+                keys.some(x => !properties.hasOwnProperty(x))) {
+                log({
+                        message: 'Object type does not allow additional properties',
+                        errorType: 'TypeError',
+                        path
+                    }
+                );
+            }
+
+            let errLen = 0;
+
+            // If this is a structured object
+            if (propertyKeys.length) {
+                const keysLen = keys.length;
+                const result = {};
+                for (let i = 0; i < keysLen; i++) {
+                    const k = keys[i];
+                    const propc = propertyCoercers[k];
+                    if (propc) {
+                        const vv = propc(value[k], path + '.' + k, log);
+                        if (vv === undefined && !allErrors)
+                            return undefined;
+                        if (vv !== undefined)
+                            result[k] = vv;
+                    } else if (!removeAdditional && additionalProperties) {
+                        result[k] = value[k];
+                    } else if (!removeAdditional) {
+                        errLen++;
+                        log({
+                                message: 'Object type does not allow additional properties',
+                                errorType: 'TypeError',
+                                path: path + '.' + k
+                            }
+                        );
+                    }
+                }
+                value = result;
+            }
+
+            if (minProperties && keys.length < minProperties) {
+                errLen++;
+                log({
+                        message: `Minimum accepted properties ${minProperties}, actual ${keys.length}`,
+                        errorType: 'range-error',
+                        path,
+                        range: [minProperties, maxProperties],
+                        actual: value.length
+                    }
+                );
+            }
+            if (maxProperties && keys.length > maxProperties) {
+                errLen++;
+                log({
+                        message: `Maximum accepted properties ${maxProperties}, actual ${keys.length}`,
+                        errorType: 'range-error',
+                        path,
+                        range: [minProperties, maxProperties],
+                        actual: value.length
+                    }
+                );
+            }
+            return !errLen ? value : undefined;
+        };
     }
 
 }

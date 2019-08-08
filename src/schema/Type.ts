@@ -1,20 +1,34 @@
 import * as spec10 from "../spec10";
-import Library from "./Library";
-import {ValidationError} from "../ValidationError";
+import {Library} from "./Library";
 
-export type CoerceFunction = (v: any, options?: ICoerceOptions) => any;
+export interface IValidationError {
+    message: string;
+    errorType?: string;
+    path?: string;
 
-export interface ICoerceOptions {
-    ignoreRequired?: boolean;
-    coerceDates?: boolean;
-    location?: string;
+    [index: string]: any;
+}
+
+export interface IValidateOptions {
+    allErrors?: boolean;
     strictTypes?: boolean;
+    ignoreRequired?: boolean;
+    coerceTypes?: boolean;
+    coerceJSTypes?: boolean;
+    removeAdditional?: boolean | 'all';
+    fastDateValidation?: boolean;
+}
+
+export type ValidateFunction = (value: any) => void;
+export type LogFunction = (err: IValidationError) => void;
+
+export type InternalValidateFunction =
+    (v: any, path: string, error: LogFunction) => any;
+
+export class ValidationError extends Error {
 }
 
 export default class Type {
-
-    private _jsCoercer: CoerceFunction;
-    private _jsonCoercer: CoerceFunction;
     public library: Library;
     public name: string;
     public required?: boolean;
@@ -26,13 +40,11 @@ export default class Type {
         this.name = name;
     }
 
-    // noinspection JSMethodCanBeStatic
     get baseType() {
         return null;
     }
 
-    mix(src: Type | spec10.TypeDeclaration) {
-        this._jsCoercer = undefined;
+    set(src: Type | spec10.TypeDeclaration) {
         if (src.required !== undefined)
             this.required = src.required;
         if (src.default !== undefined)
@@ -45,55 +57,45 @@ export default class Type {
         }
     }
 
-    toJS(v, options?: ICoerceOptions) {
-        const coercer = this._jsCoercer =
-            (this._jsCoercer = this.getJSCoercer());
-        return coercer(v, options);
-    }
-
-    toJSON(v, options?: ICoerceOptions) {
-        const coercer = this._jsonCoercer =
-            (this._jsonCoercer = this.getJSONCoercer());
-        return coercer(v, options);
+    validator(options: IValidateOptions = {}): ValidateFunction {
+        const validate = this._generateValidateFunction(options);
+        const {allErrors} = options;
+        return (value: any) => {
+            const errors = [];
+            const log = (e: IValidationError) => {
+                errors.push(e);
+                if (!allErrors) {
+                    const err = new ValidationError(errors[0].message);
+                    // @ts-ignore
+                    err.errors = errors;
+                    throw err;
+                }
+            };
+            return validate(value != null ? value :
+                (this.default != null ? this.default : null), '', log);
+        };
     }
 
     extend(name) {
         const clz = Object.getPrototypeOf(this).constructor;
         const inst = new clz(this.library, name);
-        inst.mix(this);
+        inst.set(this);
         return inst;
     }
 
-    getJSCoercer(): CoerceFunction {
-        const coercer = this._getJSCoercer();
-        const {required} = this;
-        return (v: any, options?: ICoerceOptions) => {
-            v = v == null ? null : coercer(v, options);
-            if (required && v == null && !(options && options.ignoreRequired))
-                throw new ValidationError('Value required', 'Value required error',
-                    (options && options.location));
-            return v;
+    protected _generateValidateFunction(options: IValidateOptions): InternalValidateFunction {
+        const required = this.required && !options.ignoreRequired;
+        return (value: any, path: string, log?: LogFunction) => {
+            if (required && value == null) {
+                log({
+                    message: 'Value required',
+                    errorType: 'ValueRequiredError',
+                    path
+                });
+                return;
+            }
+            return value;
         };
-    }
-
-    getJSONCoercer(): CoerceFunction {
-        const coercer = this._getJSONCoercer();
-        const {required} = this;
-        return (v: any, options?: ICoerceOptions) => {
-            v = v == null ? null : coercer(v, options);
-            if (required && v == null && !(options && options.ignoreRequired))
-                throw new ValidationError('Value required', 'Value required error',
-                    (options && options.location));
-            return v;
-        };
-    }
-
-    protected _getJSCoercer(): CoerceFunction {
-        return (v) => v;
-    }
-
-    protected _getJSONCoercer(): CoerceFunction {
-        return (v) => v;
     }
 
     protected _copyProperties(src, properties) {

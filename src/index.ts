@@ -1,6 +1,6 @@
 import {ILoadOptions, IApiDocument} from './types';
 import {loadApiFile, loadApiContent} from './loadRamlApi';
-import Library from './schema/Library';
+import {Library} from './schema/Library';
 
 export {
     ILoadOptions,

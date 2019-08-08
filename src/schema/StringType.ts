@@ -1,6 +1,5 @@
-import Type, {ICoerceOptions} from './Type';
+import Type, {LogFunction, InternalValidateFunction, IValidateOptions} from './Type';
 import * as spec10 from "../spec10";
-import {ValidationError} from "../ValidationError";
 
 export default class StringType extends Type {
 
@@ -9,8 +8,8 @@ export default class StringType extends Type {
     public minLength?: number;
     public maxLength?: number;
 
-    mix(src: StringType | spec10.StringTypeDeclaration) {
-        super.mix(src);
+    set(src: StringType | spec10.StringTypeDeclaration) {
+        super.set(src);
         this._copyProperties(src, ['enum', 'pattern', 'minLength', 'maxLength']);
     }
 
@@ -18,45 +17,79 @@ export default class StringType extends Type {
         return 'string';
     }
 
-    protected _getJSCoercer() {
+    protected _generateValidateFunction(options: IValidateOptions): InternalValidateFunction {
+        const superValidate = super._generateValidateFunction(options);
+        const {strictTypes} = options;
+        const coerce = options.coerceTypes || options.coerceJSTypes;
         const minLength = this.minLength || 0;
         const maxLength = this.maxLength || 0;
         const pattern = Array.isArray(this.pattern) ?
             this.pattern.map(x => new RegExp(x)) :
             (this.pattern ? [new RegExp(this.pattern)] : null);
         const patternLen = pattern && pattern.length;
-        return (v: any, options?: ICoerceOptions) => {
-            if (options && options.strictTypes && typeof v !== 'string')
-                throw new ValidationError(
-                    `Value must be a string`, 'Type error',
-                    (options && options.location));
 
-            v = String(v);
-            if (minLength && v.length < minLength)
-                throw new ValidationError(
-                    `Minimum accepted length is ${minLength}, actual${v.length}`,
-                    'Value length out of range error',
-                    (options && options.location));
-            if (maxLength && v.length > maxLength)
-                throw new ValidationError(
-                    `Maximum accepted length is ${maxLength}, actual ${v.length}`,
-                    'Value length out of range error',
-                    (options && options.location));
+        return (value: any, path: string, log?: LogFunction) => {
+            value = superValidate(value, path, log);
+            if (value == null)
+                return value;
+            if ((strictTypes && typeof value !== 'string') ||
+                (value && typeof value === 'object')) {
+                log({
+                    message: 'Value must be a string',
+                    errorType: 'TypeError',
+                    path
+                });
+                return;
+            }
+
+            const v = String(value);
+            // Validate min length
+            if (minLength && v.length < minLength) {
+                log({
+                        message: `Minimum accepted length is ${minLength}, actual ${v.length}`,
+                        errorType: 'RangeError',
+                        path,
+                        range: [minLength, maxLength],
+                        actual: value.length
+                    }
+                );
+            }
+
+            // Validate max length
+            if (maxLength && v.length > maxLength) {
+                log({
+                        message: `Maximum accepted length is ${maxLength}, actual ${v.length}`,
+                        errorType: 'RangeError',
+                        path,
+                        range: [minLength, maxLength],
+                        actual: value.length
+                    }
+                );
+            }
+
+            // Validate patterns
             if (patternLen) {
+                let matched;
                 for (let i = 0; i < patternLen; i++) {
-                    if (!v.match(pattern[i]))
-                        throw new ValidationError(
-                            `Value does not match required format "${pattern[i]}"`,
-                            'Invalid format error',
-                            (options && options.location));
+                    if (v.match(pattern[i])) {
+                        matched = true;
+                        break;
+                    }
+
+                }
+                if (!matched) {
+                    log({
+                            message: `Value does not match required format`,
+                            errorType: 'format-error',
+                            path
+                        }
+                    );
+                    return;
                 }
             }
-            return v;
-        };
-    }
 
-    protected _getJSONCoercer() {
-        return this._getJSCoercer();
+            return coerce ? v : value;
+        };
     }
 
 }

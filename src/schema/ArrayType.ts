@@ -1,100 +1,102 @@
-import Type, {ICoerceOptions} from './Type';
+import Type, {InternalValidateFunction, IValidateOptions, LogFunction} from './Type';
 import * as spec10 from "../spec10";
-import {ValidationError} from "../ValidationError";
+import UnionType from './UnionType';
 
 export default class ArrayType extends Type {
 
     public uniqueItems?: boolean;
     public minItems?: number = 0;
     public maxItems?: number = 2147483647;
-    public items?: Type[];
+    private _union?: UnionType;
 
     get baseType() {
         return 'array';
     }
 
-    mix(src: ArrayType | spec10.ArrayTypeDeclaration) {
-        super.mix(src);
+    get items(): Type[] {
+        return this._union && this._union.anyOf;
+    }
+
+    set(src: ArrayType | spec10.ArrayTypeDeclaration) {
+        super.set(src);
         this._copyProperties(src, ['uniqueItems', 'minItems', 'maxItems']);
-        if (Array.isArray(src.items)) {
-            this.items = [];
-            for (const typ of src.items) {
-                if (typ instanceof Type)
-                    this.items.push(typ);
-                else
-                    this.items.push(this.library.getType(typ));
-            }
+        if (src instanceof ArrayType)
+            this._union = src._union;
+        else if (Array.isArray(src.items)) {
+            this._union = new UnionType(this.library, this.name);
+            // @ts-ignore
+            this._union.set({
+                anyOf: src.items
+            });
         }
     }
 
-    protected _getJSCoercer() {
-        const {uniqueItems, minItems, maxItems, items} = this;
-        const itemCoercers = items && items.map(x => x.getJSCoercer());
-        const coercersLen = itemCoercers && itemCoercers.length;
-
-        return (arr: any, options?: ICoerceOptions) => {
-            const location = (options && options.location) || '';
-            if (options && options.strictTypes && !Array.isArray(arr))
-                throw new ValidationError(
-                    `Value must be an array`, 'Type error', location);
-
-            if (!Array.isArray(arr)) arr = [arr];
-
-            if (minItems && arr.length < minItems)
-                throw new ValidationError(
-                    `Minimum accepted array length is ${minItems}, actual${arr.length}`,
-                    'Array length out of range error', location);
-            if (maxItems && arr.length > maxItems)
-                throw new ValidationError(
-                    `Maximum accepted array length is ${maxItems}, actual ${arr.length}`,
-                    'Array length out of range error', location);
-            if (!itemCoercers)
-                return arr;
-
-            const resultArray = [];
-            let k = 0;
-            const tryCoercersOptions = {
-                ...options,
-                strictTypes: true
-            };
-            const tryCoercers = (v, index) => {
-                // Try with strict types
-                let y = coercersLen;
-                while (y--) {
-                    try {
-                        return itemCoercers[k](v, tryCoercersOptions);
-                    } catch (e) {
-                        k++;
-                        if (k >= coercersLen)
-                            k = 0;
-                    }
-                }
-                // Try without strict types
-                if (!(options && options.strictTypes)) {
-                    for (let t = 0; t < coercersLen; t++) {
-                        try {
-                            return itemCoercers[t](v, options);
-                        } catch (e) {
-                            //
-                        }
-                    }
-                }
-                throw new ValidationError(
-                    `Value does not match any of allowed item types`,
-                    'Type error', location + '[' + index + ']');
-            };
-            const itemsLen = arr.length;
-            for (let i = 0; i < itemsLen; i++) {
-                const v = tryCoercers(arr[i], i);
-                if (!(uniqueItems && resultArray.includes(v)))
-                    resultArray.push(v);
-            }
-            return resultArray;
-        };
+    hasObjectType() {
+        return this._union && this._union.hasObjectType();
     }
 
-    protected _getJSONCoercer() {
-        return this._getJSCoercer();
+    protected _generateValidateFunction(options: IValidateOptions): InternalValidateFunction {
+        const superValidate = super._generateValidateFunction(options);
+        const {uniqueItems, minItems, maxItems, items} = this;
+        const {strictTypes} = options;
+        // @ts-ignore
+        const unionValidator = this._union && this._union._generateValidateFunction(options);
+
+        return (value: any, path: string, log?: LogFunction) => {
+            value = superValidate(value, path, log);
+            if (value == null)
+                return value;
+
+            if (strictTypes && !Array.isArray(value)) {
+                log({
+                        message: 'Value must be an array',
+                        errorType: 'TypeError',
+                        path
+                    }
+                );
+                return;
+            }
+
+            if (!Array.isArray(value)) value = [value];
+            let errLen = 0;
+
+            if (unionValidator) {
+                const itemsLen = value.length;
+                const resultArray = [];
+                for (let i = 0; i < itemsLen; i++) {
+                    const v = unionValidator(value[i], path + '[' + i + ']', log);
+                    if (v === undefined)
+                        return;
+                    if (!uniqueItems || !resultArray.includes(v))
+                        resultArray.push(v);
+                }
+                value = resultArray;
+            }
+
+            if (minItems && value.length < minItems) {
+                errLen++;
+                log({
+                        message: `Minimum accepted array length is ${minItems}, actual ${value.length}`,
+                        errorType: 'range-error',
+                        path,
+                        range: [minItems, maxItems],
+                        actual: value.length
+                    }
+                );
+            }
+            if (maxItems && value.length > maxItems) {
+                errLen++;
+                log({
+                        message: `Maximum accepted array length is ${maxItems}, actual ${value.length}`,
+                        errorType: 'range-error',
+                        path,
+                        range: [minItems, maxItems],
+                        actual: value.length
+                    }
+                );
+            }
+            return !errLen ? value : undefined;
+        };
     }
 
 }

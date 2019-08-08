@@ -1,5 +1,4 @@
-import Type, {ICoerceOptions} from './Type';
-import {ValidationError} from "../ValidationError";
+import Type, {LogFunction, InternalValidateFunction, IValidateOptions} from './Type';
 
 export default class BooleanType extends Type {
 
@@ -7,17 +6,25 @@ export default class BooleanType extends Type {
         return 'boolean';
     }
 
-    _getJSCoercer() {
-        return (v: any, options?: ICoerceOptions) => {
-            if (options && options.strictTypes && !(typeof v === 'boolean'))
-                throw new ValidationError(
-                    `Value must be a boolean`, 'Type error',
-                    (options && options.location));
+    protected _generateValidateFunction(options: IValidateOptions): InternalValidateFunction {
+        const superValidate = super._generateValidateFunction(options);
+        const {strictTypes} = options;
+        const coerce = options.coerceTypes || options.coerceJSTypes;
+        return (value: any, path: string, log?: LogFunction) => {
+            value = superValidate(value, path, log);
+            if (value == null)
+                return value;
+            if ((strictTypes && typeof value !== 'boolean') ||
+                (value && typeof value === 'object')) {
+                log({
+                    message: 'Value must be a boolean',
+                    errorType: 'TypeError',
+                    path
+                });
+                return;
+            }
+            return coerce ? !!value : value;
         };
-    }
-
-    _getJSONCoercer() {
-        return this._getJSCoercer();
     }
 
 }
