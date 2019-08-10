@@ -1,4 +1,4 @@
-import Type from './Type';
+import AnyType from './AnyType';
 
 import * as spec10 from "../spec10";
 import ArrayType from './ArrayType';
@@ -15,6 +15,7 @@ import StringType from './StringType';
 import UnionType from './UnionType';
 
 const internalTypes = {
+    'any': AnyType,
     'array': ArrayType,
     'boolean': BooleanType,
     'date-only': DateOnlyType,
@@ -29,15 +30,16 @@ const internalTypes = {
     'union': UnionType
 };
 
-export class Library {
+export class TypeLibrary {
 
-    private readonly _internalTypes: Map<string, Type> = new Map<string, Type>();
-    public readonly types: Map<string, Type> = new Map<string, Type>();
+    private readonly _internalTypes: { [index: string]: AnyType };
+    public readonly types: { [index: string]: AnyType };
 
     constructor() {
-        this._internalTypes = new Map();
+        this._internalTypes = {};
+        this.types = {};
         for (const k of Object.keys(internalTypes)) {
-            this._internalTypes.set(k, new internalTypes[k](this, k));
+            this._internalTypes[k] = new internalTypes[k](this, k);
         }
     }
 
@@ -45,25 +47,23 @@ export class Library {
         const orgGetType = this.getType;
         const creating = {};
         try {
-            this.getType = (n: spec10.TypeReference10) => {
+            this.getType = (n: string) => {
                 const t = orgGetType.call(this, n, true);
                 if (t)
                     return t;
-                if (typeof n === 'string') {
-                    const fn = creating[n];
-                    if (fn) {
-                        delete creating[n];
-                        return fn();
-                    }
+                const fn = creating[n];
+                if (fn) {
+                    delete creating[n];
+                    return fn();
                 }
             };
-            // Check if types already defined
+            // Check if types are already defined
             for (const decl of declaration) {
-                if (this.types.has(decl.name) || creating[decl.name])
+                if (this.types[decl.name] || creating[decl.name])
                     throw new Error(`${decl.name} already defined in library`);
                 creating[decl.name] = () => {
                     const t = this.createType(decl);
-                    this.types.set(decl.name, t);
+                    this.types[decl.name] = t;
                     return t;
                 };
             }
@@ -77,27 +77,22 @@ export class Library {
         }
     }
 
-    getType(n: spec10.TypeReference10, silent?: boolean) {
+    getType(n: string | spec10.TypeDeclaration, silent?: boolean) {
         const t = typeof n === 'string' ?
-            this.types.get(n) || this._internalTypes.get(n) :
+            this.types[n] || this._internalTypes[n] :
             this.createType(n);
         if (!(t || silent))
             throw new Error(`Type "${n}" not found`);
         return t;
     }
 
-    createType(decl: spec10.TypeDeclaration): Type {
-        let inst;
-        const types = decl.type ?
-            (Array.isArray(decl.type) ? decl.type : [decl.type]) : ['object'];
-        for (const n of types) {
-            const baseType = this.getType(n);
-            if (inst)
-                inst.set(baseType);
-            else inst = baseType.extend(decl.name);
-        }
-        inst.set(decl);
-        return inst;
+    createType(decl: spec10.TypeDeclaration): AnyType {
+        const t = decl.type ?
+            (Array.isArray(decl.type) ? decl.type[0] : decl.type) :
+            // @ts-ignore
+            (decl.properties ? 'object' : 'string');
+        const base = this.getType(t);
+        return base.extend(decl);
     }
 
 }

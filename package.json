@@ -7,7 +7,6 @@
     "Eray Hanoglu <e.hanoglu@panates.com>",
     "Arhun Hınçalan <ahincalan@hotmail.com>"
   ],
-  "browser": "./lib/browser.js",
   "main": "./lib/index.js",
   "license": "MIT",
   "repository": {

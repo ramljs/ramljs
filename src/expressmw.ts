@@ -1,8 +1,7 @@
 import Router from 'router';
-import {IApiDocument} from './types';
-import Validator from './Validator';
+import {ApiDoc} from "./ApiDoc";
 
-export function createExpressRouter(apiDoc: IApiDocument): Router {
+export function createExpressRouter(apiDoc: ApiDoc): Router {
     const router = Router();
     const proto = Object.getPrototypeOf(Object.getPrototypeOf(router));
     const org_route = proto.route;

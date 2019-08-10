@@ -1,46 +1,51 @@
-import Type, {InternalValidateFunction, IValidateOptions, LogFunction} from './Type';
+import AnyType, {InternalValidateFunction, IValidateOptions, LogFunction} from './AnyType';
 import * as spec10 from "../spec10";
 import UnionType from './UnionType';
 
-export default class ArrayType extends Type {
+export default class ArrayType extends AnyType {
 
     public uniqueItems?: boolean;
     public minItems?: number = 0;
     public maxItems?: number = 2147483647;
-    private _union?: UnionType;
+    private items?: AnyType;
 
-    get baseType() {
+    get baseType(): string {
         return 'array';
     }
 
-    get items(): Type[] {
-        return this._union && this._union.anyOf;
+    get typeFamily(): string {
+        return 'array';
     }
 
     set(src: ArrayType | spec10.ArrayTypeDeclaration) {
         super.set(src);
         this._copyProperties(src, ['uniqueItems', 'minItems', 'maxItems']);
         if (src instanceof ArrayType)
-            this._union = src._union;
+            this.items = src.items;
         else if (Array.isArray(src.items)) {
-            this._union = new UnionType(this.library, this.name);
+            this.items = new UnionType(this.library, this.name);
             // @ts-ignore
-            this._union.set({
+            this.items.set({
                 anyOf: src.items
             });
         }
     }
 
     hasObjectType() {
-        return this._union && this._union.hasObjectType();
+        return this.items &&
+            (this.items.baseType === 'object' ||
+                (this.items.baseType === 'union' &&
+                    // @ts-ignore
+                    this.items.hasObjectType())
+            );
     }
 
-    protected _generateValidateFunction(options: IValidateOptions): InternalValidateFunction {
-        const superValidate = super._generateValidateFunction(options);
+    protected _generateValidator(options: IValidateOptions): InternalValidateFunction {
+        const superValidate = super._generateValidator(options);
         const {uniqueItems, minItems, maxItems, items} = this;
         const {strictTypes} = options;
         // @ts-ignore
-        const unionValidator = this._union && this._union._generateValidateFunction(options);
+        const itemsValidator = items && items._generateValidator(options);
 
         return (value: any, path: string, log?: LogFunction) => {
             value = superValidate(value, path, log);
@@ -60,11 +65,11 @@ export default class ArrayType extends Type {
             if (!Array.isArray(value)) value = [value];
             let errLen = 0;
 
-            if (unionValidator) {
+            if (itemsValidator) {
                 const itemsLen = value.length;
                 const resultArray = [];
                 for (let i = 0; i < itemsLen; i++) {
-                    const v = unionValidator(value[i], path + '[' + i + ']', log);
+                    const v = itemsValidator(value[i], path + '[' + i + ']', log);
                     if (v === undefined)
                         return;
                     if (!uniqueItems || !resultArray.includes(v))

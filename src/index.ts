@@ -1,17 +1,14 @@
-import {ILoadOptions, IApiDocument} from './types';
-import {loadApiFile, loadApiContent} from './loadRamlApi';
-import {Library} from './schema/Library';
+import {loadApiFile, ILoadOptions} from './apiLoader';
+import {TypeLibrary} from './types/TypeLibrary';
+import {ApiDoc} from './ApiDoc';
 
 export {
     ILoadOptions,
-    IApiDocument,
-    loadApiFile,
-    loadApiContent,
-    Library
+    ApiDoc,
+    TypeLibrary
 };
 
-export async function expressRouter(api: IApiDocument,
-                                    options: object) {
+export async function expressRouter(apiDoc: ApiDoc) {
     const {createExpressRouter} = await import('./expressmw');
-    return createExpressRouter(api);
+    return createExpressRouter(apiDoc);
 }

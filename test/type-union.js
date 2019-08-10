@@ -1,13 +1,13 @@
 /* eslint-disable */
 const assert = require('assert');
-const {Library} = require('../lib/schema/Library');
+const {TypeLibrary} = require('../lib/types/TypeLibrary');
 
 describe('UnionType', function() {
 
-  let library = new Library();
+  let library = new TypeLibrary();
 
   beforeEach(function() {
-    library = new Library();
+    library = new TypeLibrary();
   });
 
   describe('validation', function() {

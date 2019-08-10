@@ -33,6 +33,10 @@ module.exports = {
      *
      */
     post: () => {}
+  },
+
+  pathSecurity: (req, scope) => {
+
   }
 
 };
