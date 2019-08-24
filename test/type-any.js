@@ -20,7 +20,7 @@ describe('AnyType', function() {
       facets: [{name: 'facet1', type: 'any'}]
     });
     assert.strictEqual(typ1.name, 'typ1');
-    assert.deepStrictEqual(typ1.type, ['any']);
+    assert.strictEqual(typ1.type[0].name, 'any');
     assert.strictEqual(typ1.displayName, 'displayName');
     assert.strictEqual(typ1.description, 'description');
     assert.strictEqual(typ1.example, 'example');
@@ -40,7 +40,7 @@ describe('AnyType', function() {
     assert.throws(() =>
         library.addType({
           type: 'any'
-        }), /You must provide "name" argument/);
+        }), /You must provide "decl.name" property/);
   });
 
   it('should use default value if given value is null', function() {

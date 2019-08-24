@@ -61,63 +61,52 @@ export type InternalValidateFunction =
 export class ValidationError extends Error {
 }
 
+const BuiltinFacets = ['name', 'displayName', 'description', 'default', 'required', 'examples', 'example'];
+
 export default class AnyType {
     protected _library: TypeLibrary;
-    protected _successors: AnyType[];
-    public type: Array<string | spec10.TypeDeclaration>;
-    public name: string;
-    public displayName: string;
-    public description: string;
-    public example: any;
-    public examples: any[];
-    public required: string;
-    public default: any;
     public annotations: { [index: string]: any };
     public facets: { [index: string]: AnyType };
+    public name: string;
+    public type: AnyType[];
+    public values: { [index: string]: any };
 
-    constructor(library: TypeLibrary, name: string) {
-        if (!name)
-            throw new Error('You must provide "name" argument');
+    constructor(library?: TypeLibrary, decl?: spec10.TypeDeclaration) {
+        if (!decl.name)
+            throw new Error('You must provide "decl.name" property');
+
+        if (decl.examples && decl.example)
+            throw new Error('Can\'t use "example" and "examples" facets at same time');
+
         this._definePrivate('_library', library);
-        this._definePrivate('_successors', []);
-        this.type = [this.baseType];
-        this.name = name;
-        this.displayName = undefined;
-        this.description = undefined;
-        this.example = undefined;
-        this.examples = undefined;
-        this.required = undefined;
-        this.default = undefined;
+        this.type = [];
+        if (decl.type) {
+            const types = Array.isArray(decl.type) ? decl.type : [decl.type];
+            for (const n of types) {
+                const t = library.getType(n);
+                if (this.storedType !== t.storedType)
+                    throw new TypeError(`Can't extend ${this.storedType} type from ${t.storedType} type`);
+                this.type.push(t);
+            }
+        }
+        this.name = decl.name;
         this.annotations = {};
         this.facets = {};
-    }
-
-    get library() {
-        return this._library;
-    }
-
-    getFacet(n: string, defaultValue?) {
-        let x: any;
-        /*
-         * a required property in the parent type cannot be changed to optional in the sub-type
-         */
-        if (n === 'required') {
-            const l = this._successors.length;
-            for (let i = 0; i < l; i++) {
-                x = this._successors[i].getFacet(n);
-                if (x) return x;
-            }
-            return this.required;
+        this.values = {};
+        if (decl.annotations) {
+            decl.annotations.forEach(x =>
+                this.annotations[x.name] = x.value
+            );
         }
-        x = this.hasOwnProperty(n) ? this[n] : this.facets[n];
-        if (x !== undefined)
-            return x;
-        for (let i = this._successors.length - 1; i >= 0; i--) {
-            x = this._successors[i].getFacet(n);
-            if (x !== undefined)
-                return x;
+        if (decl.facets) {
+            decl.facets.forEach(x =>
+                this.facets[x.name] = library.getType(x)
+            );
         }
-        return defaultValue;
+        BuiltinFacets.forEach(n => {
+            if (decl[n] !== undefined)
+                this[n] = decl[n];
+        });
     }
 
     get typeFamily(): string {
@@ -132,45 +121,91 @@ export default class AnyType {
         return this.baseType;
     }
 
-    extend(decl: spec10.TypeDeclaration): AnyType {
-        if (decl.examples && decl.example)
-            throw new Error('Can\'t use "example" and "examples" facets at same time');
+    get displayName() {
+        return this.get('displayName');
+    }
 
-        const clz = Object.getPrototypeOf(this).constructor;
-        const inst = new clz(this.library, decl.name);
-        if (decl.type) {
-            const types = Array.isArray(decl.type) ? decl.type : [decl.type];
-            for (const n of types) {
-                if (n !== this.baseType) {
-                    const t = this.library.getType(n);
-                    if (inst.storedType !== t.storedType)
-                        throw new TypeError(`Can't extend ${inst.storedType} type from ${t.storedType} type`);
-                    inst._successors.push(t);
-                }
-            }
+    set displayName(v) {
+        this.set('displayName', v);
+    }
+
+    get description() {
+        return this.get('description');
+    }
+
+    set description(v) {
+        this.set('description', v);
+    }
+
+    get default() {
+        return this.get('default');
+    }
+
+    set default(v) {
+        this.set('default', v);
+    }
+
+    get required() {
+        return this.get('required');
+    }
+
+    set required(v) {
+        this.set('required', v);
+    }
+
+    get examples() {
+        return this.get('examples');
+    }
+
+    set examples(v) {
+        this.set('examples', v);
+    }
+
+    get example() {
+        return this.get('example');
+    }
+
+    set example(v) {
+        this.set('example', v);
+    }
+
+    get(n: string, defaultValue?) {
+        if (!this.hasFacet(n))
+            throw new Error(`Type ${this.name} has no facet named "${n}"`);
+        const x = this.values[n];
+        if (x !== undefined)
+            return x;
+        for (let i = this.type.length - 1; i >= 0; i--) {
+            const xx = this.type[i].values[n];
+            if (xx) return xx;
         }
-        inst.type = Array.isArray(decl.type) ? decl.type : [decl.type];
-        ['displayName', 'description', 'default', 'required', 'examples', 'example'].forEach(n => {
-            if (decl[n] !== undefined)
-                inst[n] = decl[n];
-        });
-        if (decl.annotations) {
-            decl.annotations.forEach(x => {
-                inst.annotations[x.name] = x.value;
-            });
+        return defaultValue;
+    }
+
+    set(n: string, value) {
+        if (!this.hasFacet(n))
+            throw new Error(`Type ${this.name} has no facet named "${n}"`);
+        this.values[n] = value;
+    }
+
+    hasFacet(n: string): boolean {
+        return !!(BuiltinFacets.includes(n) || this.getUserDefinedFacet(n));
+    }
+
+    getUserDefinedFacet(n: string) {
+        const x = this.facets[n];
+        if (x)
+            return x;
+        for (let i = this.type.length - 1; i >= 0; i--) {
+            const xx = this.type[i].facets[n];
+            if (xx) return xx;
         }
-        if (decl.facets) {
-            decl.facets.forEach(x => {
-                inst.facets[x.name] = this.library.getType(x);
-            });
-        }
-        return inst;
     }
 
     validator(options: IValidateOptions = {}): ValidateFunction {
         const validate = this._generateValidator(options);
         const {allErrors} = options;
-        const defVal = this.getFacet('default');
+        const defVal = this.default;
         return (value: any) => {
             const errors = [];
             const log = (e: IValidationError) => {
@@ -195,8 +230,8 @@ export default class AnyType {
     }
 
     protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {
-        const data = {code: '\nif (value === null) return value;', variables: {}};
-        if (!(options.ignoreRequired || rules.noRequiredCheck) && this.getFacet('required')) {
+        const data = {code: '', variables: {}};
+        if (!(options.ignoreRequired || rules.noRequiredCheck) && this.required) {
             data.code += `     
     if (value == null) {
         log({
@@ -208,6 +243,7 @@ export default class AnyType {
     }
 `;
         }
+        data.code += '\n    if (value === null) return value;';
         return data;
     }
 

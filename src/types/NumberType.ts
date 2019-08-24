@@ -37,21 +37,16 @@ const MaxValues = {
     uint8: 255,
 };
 
+const BuiltinFacets = ['enum', 'minimum', 'maximum', 'format', 'multipleOf'];
+
 export default class NumberType extends AnyType {
 
-    public enum: number[];
-    public minimum?: number;
-    public maximum?: number;
-    public format?: string;
-    public multipleOf?: number;
-
-    constructor(library: TypeLibrary, name: string) {
-        super(library, name);
-        this.enum = undefined;
-        this.minimum = undefined;
-        this.maximum = undefined;
-        this.format = undefined;
-        this.multipleOf = undefined;
+    constructor(library?: TypeLibrary, decl?: spec10.NumberTypeDeclaration) {
+        super(library, decl);
+        BuiltinFacets.forEach(n => {
+            if (decl[n] !== undefined)
+                this[n] = decl[n];
+        });
     }
 
     get baseType(): string {
@@ -62,13 +57,48 @@ export default class NumberType extends AnyType {
         return 'scalar';
     }
 
-    extend(decl: spec10.NumberTypeDeclaration): NumberType {
-        const inst = super.extend(decl) as NumberType;
-        ['enum', 'minimum', 'maximum', 'format', 'multipleOf'].forEach(n => {
-            if (decl[n] !== undefined)
-                inst[n] = decl[n];
-        });
-        return inst;
+    get enum(): number[] {
+        return this.get('enum');
+    }
+
+    set enum(v: number[]) {
+        this.set('enum', v);
+    }
+
+    get minimum(): number {
+        return this.get('minimum');
+    }
+
+    set minimum(v: number) {
+        this.set('minimum', v);
+    }
+
+    get maximum(): number {
+        return this.get('maximum');
+    }
+
+    set maximum(v: number) {
+        this.set('maximum', v);
+    }
+
+    get format(): string {
+        return this.get('format');
+    }
+
+    set format(v: string) {
+        this.set('format', v);
+    }
+
+    get multipleOf(): string {
+        return this.values.format;
+    }
+
+    set multipleOf(v: string) {
+        this.set('multipleOf', v);
+    }
+
+    hasFacet(n: string): boolean {
+        return BuiltinFacets.includes(n) || super.hasFacet(n);
     }
 
     protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {
@@ -76,22 +106,22 @@ export default class NumberType extends AnyType {
         const numRules = rules.number || {};
         const {strictTypes} = options;
         const coerce = options.coerceTypes || options.coerceJSTypes;
-        const enums = !numRules.noEnumCheck && this.getFacet('enum');
+        const enums = !numRules.noEnumCheck && this.get('enum');
         if (enums)
             data.variables.enums = new Set(enums);
 
-        const format = !numRules.noFormatCheck && this.getFacet('format');
+        const format = !numRules.noFormatCheck && this.get('format');
         let minimum;
         let maximum;
         if (!numRules.noMinimumCheck) {
-            minimum = this.getFacet('minimum');
+            minimum = this.get('minimum');
             minimum = minimum != null ? minimum : MinValues[format];
         }
         if (!numRules.noMaximumCheck) {
-            maximum = !numRules.noMaximumCheck && this.getFacet('maximum');
+            maximum = !numRules.noMaximumCheck && this.get('maximum');
             maximum = maximum != null ? maximum : MaxValues[format];
         }
-        const multipleOf = !numRules.noMultipleOf && this.getFacet('multipleOf');
+        const multipleOf = !numRules.noMultipleOf && this.get('multipleOf');
         const bigFormat = ['bigint', 'int64', 'uint64', 'long'].includes(format);
         const intFormat = IntegerTypes.includes(format);
 

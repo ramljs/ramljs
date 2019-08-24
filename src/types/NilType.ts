@@ -4,8 +4,15 @@ import AnyType, {
     IValidateRules,
 } from './AnyType';
 import * as spec10 from "../spec10";
+import {TypeLibrary} from "./TypeLibrary";
 
 export default class NilType extends AnyType {
+
+    constructor(library?: TypeLibrary, decl?: spec10.TypeDeclaration) {
+        decl.required = undefined;
+        decl.default = undefined;
+        super(library, decl);
+    }
 
     get baseType(): string {
         return 'nil';
@@ -13,13 +20,6 @@ export default class NilType extends AnyType {
 
     get typeFamily(): string {
         return 'scalar';
-    }
-
-    extend(decl: spec10.TypeDeclaration): NilType {
-        decl.required = false;
-        if (decl.default !== undefined)
-            decl.default = null;
-        return super.extend(decl) as NilType;
     }
 
     protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {

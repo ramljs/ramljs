@@ -6,19 +6,16 @@ import AnyType, {
 import * as spec10 from "../spec10";
 import {TypeLibrary} from "./TypeLibrary";
 
+const BuiltinFacets = ['enum', 'pattern', 'minLength', 'maxLength'];
+
 export default class StringType extends AnyType {
 
-    public enum: string[];
-    public pattern?: string | string[];
-    public minLength?: number;
-    public maxLength?: number;
-
-    constructor(library: TypeLibrary, name: string) {
-        super(library, name);
-        this.enum = undefined;
-        this.pattern = undefined;
-        this.minLength = undefined;
-        this.maxLength = undefined;
+    constructor(library?: TypeLibrary, decl?: spec10.NumberTypeDeclaration) {
+        super(library, decl);
+        BuiltinFacets.forEach(n => {
+            if (decl[n] !== undefined)
+                this[n] = decl[n];
+        });
     }
 
     get baseType(): string {
@@ -29,13 +26,40 @@ export default class StringType extends AnyType {
         return 'scalar';
     }
 
-    extend(decl: spec10.StringTypeDeclaration): StringType {
-        const inst = super.extend(decl) as StringType;
-        ['enum', 'pattern', 'minLength', 'maxLength'].forEach(n => {
-            if (decl[n] !== undefined)
-                inst[n] = decl[n];
-        });
-        return inst;
+    get enum(): string[] {
+        return this.get('enum');
+    }
+
+    set enum(v: string[]) {
+        this.set('enum', v);
+    }
+
+    get pattern(): string[] {
+        return this.get('pattern');
+    }
+
+    set pattern(v: string[]) {
+        this.set('pattern', v);
+    }
+
+    get minLength(): string[] {
+        return this.get('minLength');
+    }
+
+    set minLength(v: string[]) {
+        this.set('minLength', v);
+    }
+
+    get maxLength(): string[] {
+        return this.get('maxLength');
+    }
+
+    set maxLength(v: string[]) {
+        this.set('maxLength', v);
+    }
+
+    hasFacet(n: string): boolean {
+        return BuiltinFacets.includes(n) || super.hasFacet(n);
     }
 
     protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {
@@ -43,12 +67,12 @@ export default class StringType extends AnyType {
         const strRules = rules.string || {};
         const {strictTypes} = options;
         const coerce = options.coerceTypes || options.coerceJSTypes;
-        const enums = !strRules.noEnumCheck && this.getFacet('enum');
+        const enums = !strRules.noEnumCheck && this.get('enum');
         if (enums)
             data.variables.enums = new Set(enums);
-        const minLength = !strRules.noMinLengthCheck && this.getFacet('minLength') || 0;
-        const maxLength = !strRules.noMaxLengthCheck && this.getFacet('maxLength') || 0;
-        const patterns = !strRules.noMaxLengthCheck && this.getFacet('pattern');
+        const minLength = !strRules.noMinLengthCheck && this.get('minLength') || 0;
+        const maxLength = !strRules.noMaxLengthCheck && this.get('maxLength') || 0;
+        const patterns = !strRules.noMaxLengthCheck && this.get('pattern');
         if (patterns) {
             data.variables.patterns = Array.isArray(patterns) ?
                 patterns.map(x => new RegExp(x)) :

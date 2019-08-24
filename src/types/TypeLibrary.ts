@@ -1,3 +1,4 @@
+/* tslint:disable:object-literal-key-quotes */
 import AnyType from './AnyType';
 
 import * as spec10 from "../spec10";
@@ -14,33 +15,14 @@ import ObjectType from './ObjectType';
 import StringType from './StringType';
 import UnionType from './UnionType';
 
-const internalTypes = {
-    'any': AnyType,
-    'array': ArrayType,
-    'boolean': BooleanType,
-    'date-only': DateOnlyType,
-    'time-only': TimeOnlyType,
-    'datetime-only': DateTimeOnlyType,
-    'datetime': DateTimeType,
-    'integer': IntegerType,
-    'nil': NilType,
-    'number': NumberType,
-    'object': ObjectType,
-    'string': StringType,
-    'union': UnionType
-};
+let builtInTypes: TypeLibrary;
 
 export class TypeLibrary {
 
-    private readonly _internalTypes: { [index: string]: AnyType };
     public readonly types: { [index: string]: AnyType };
 
     constructor() {
-        this._internalTypes = {};
         this.types = {};
-        for (const k of Object.keys(internalTypes)) {
-            this._internalTypes[k] = new internalTypes[k](this, k);
-        }
     }
 
     addType(...declaration: spec10.TypeDeclaration[]) {
@@ -79,7 +61,7 @@ export class TypeLibrary {
 
     getType(n: string | spec10.TypeDeclaration, silent?: boolean) {
         const t = typeof n === 'string' ?
-            this.types[n] || this._internalTypes[n] :
+            this.types[n] || (this !== builtInTypes && builtInTypes.getType(n)) :
             this.createType(n);
         if (!(t || silent))
             throw new Error(`Type "${n}" not found`);
@@ -92,7 +74,26 @@ export class TypeLibrary {
             // @ts-ignore
             (decl.properties ? 'object' : 'string');
         const base = this.getType(t);
-        return base.extend(decl);
+        const Clazz = Object.getPrototypeOf(base).constructor;
+        return new Clazz(this, decl);
     }
 
 }
+
+builtInTypes = new TypeLibrary();
+Object.assign(builtInTypes.types,
+    {
+        'any': new AnyType(builtInTypes, {name: 'any'} as any),
+        'array': new ArrayType(builtInTypes, {name: 'array'} as any),
+        'boolean': new BooleanType(builtInTypes, {name: 'boolean'} as any),
+        'date-only': new DateOnlyType(builtInTypes, {name: 'date-only'} as any),
+        'time-only': new TimeOnlyType(builtInTypes, {name: 'time-only'} as any),
+        'datetime-only': new DateTimeOnlyType(builtInTypes, {name: 'datetime-only'} as any),
+        'datetime': new DateTimeType(builtInTypes, {name: 'datetime'} as any),
+        'integer': new IntegerType(builtInTypes, {name: 'integer'} as any),
+        'nil': new NilType(builtInTypes, {name: 'nil'} as any),
+        'number': new NumberType(builtInTypes, {name: 'number'} as any),
+        'object': new ObjectType(builtInTypes, {name: 'object'} as any),
+        'string': new StringType(builtInTypes, {name: 'string'} as any),
+        'union': new UnionType(builtInTypes, {name: 'union'} as any),
+    });

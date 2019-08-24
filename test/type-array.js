@@ -3,7 +3,7 @@ const assert = require('assert');
 const {TypeLibrary} = require('../lib/types/TypeLibrary');
 
 describe('ArrayType', function() {
-
+return;
   let library;
 
   beforeEach(function() {

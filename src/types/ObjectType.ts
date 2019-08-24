@@ -52,7 +52,7 @@ export default class ObjectType extends AnyType {
     }
 
     _getProperties(target) {
-        for (const t of this._successors) {
+        for (const t of this.type) {
             (t as ObjectType)._getProperties(target);
         }
     }
@@ -61,18 +61,18 @@ export default class ObjectType extends AnyType {
         const superValidate = super._generateValidator(options, rules);
         const objRules = rules.object || {};
 
-        let discriminator = !objRules.noDiscriminatorCheck && this.getFacet('discriminator');
+        let discriminator = !objRules.noDiscriminatorCheck && this.get('discriminator');
         if (discriminator)
             discriminator = String(discriminator).replace(/'/g, '\\\'');
-        let discriminatorValue = !objRules.noDiscriminatorCheck && this.getFacet('discriminatorValue', this.name);
+        let discriminatorValue = !objRules.noDiscriminatorCheck && this.get('discriminatorValue', this.name);
         if (discriminatorValue)
             discriminatorValue = String(discriminatorValue).replace(/'/g, '\\\'');
         const additionalProperties = objRules.noAdditionalPropertiesCheck ||
-            this.getFacet('additionalProperties', true);
+            this.get('additionalProperties', true);
         const minProperties = (!objRules.noMinPropertiesCheck &&
-            parseInt(this.getFacet('minProperties'), 10)) || 0;
+            parseInt(this.get('minProperties'), 10)) || 0;
         const maxProperties = (!objRules.noMaxPropertiesCheck &&
-            parseInt(this.getFacet('maxProperties'), 10)) || 0;
+            parseInt(this.get('maxProperties'), 10)) || 0;
 
         const properties = this.properties;
         const propertyKeys = Object.keys(properties);
@@ -88,7 +88,7 @@ export default class ObjectType extends AnyType {
 
         // Generate sub validators for inherited types
         const inheritedValidators = [];
-        for (const t of this._successors) {
+        for (const t of this.type) {
             // @ts-ignore
             inheritedValidators.push(t._generateValidator(options, {
                 noRequiredCheck: true,
@@ -142,7 +142,7 @@ return (value, path, log, context) => {
     const valueLen = valueKeys.length;
 `;
 
-        if (!additionalProperties && !this._successors.length)
+        if (!additionalProperties && !this.type.length)
             code += `    
     if (valueKeys.some(x => !properties.hasOwnProperty(x))) {
         log({

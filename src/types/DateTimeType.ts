@@ -8,11 +8,8 @@ import {TypeLibrary} from "./TypeLibrary";
 
 export default class DateTimeType extends AnyType {
 
-    public format?: 'rfc3339' | 'rfc2616';
-
-    constructor(library: TypeLibrary, name: string) {
-        super(library, name);
-        this.format = undefined;
+    constructor(library?: TypeLibrary, decl?: spec10.DateTypeDeclaration) {
+        super(library, decl);
     }
 
     get baseType(): string {
@@ -23,11 +20,16 @@ export default class DateTimeType extends AnyType {
         return 'scalar';
     }
 
-    extend(decl: spec10.DateTypeDeclaration): DateTimeType {
-        const inst = super.extend(decl) as DateTimeType;
-        inst.format = decl.format !== undefined ?
-            decl.format : this.format;
-        return inst;
+    get format(): 'rfc3339' | 'rfc2616' {
+        return this.get('format');
+    }
+
+    set format(v: 'rfc3339' | 'rfc2616') {
+        this.set('format', v);
+    }
+
+    hasFacet(n: string): boolean {
+        return n === 'format' || super.hasFacet(n);
     }
 
     protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {
@@ -37,7 +39,7 @@ export default class DateTimeType extends AnyType {
         const coerceJSTypes = options.coerceJSTypes;
         const fastDateValidation = (options.fastDateValidation || dateRules.fastDateValidation) && !coerceJSTypes;
         const baseType = this.baseType;
-        const rfc2616 = this.getFacet('format') === 'rfc2616';
+        const rfc2616 = this.get('format') === 'rfc2616';
         const matchDatePattern = this._matchDatePattern(options.strictTypes);
         const dateItemsToISO = this._dateItemsToISO();
         const formatDate = this._formatDate();
