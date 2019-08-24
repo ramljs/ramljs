@@ -1,4 +1,8 @@
-import AnyType, {LogFunction, InternalValidateFunction, IValidateOptions, IValidateRules} from './AnyType';
+import AnyType, {
+    IValidateOptions,
+    IValidateRules,
+    IFunctionData
+} from './AnyType';
 import * as spec10 from "../spec10";
 import {TypeLibrary} from "./TypeLibrary";
 
@@ -34,36 +38,29 @@ export default class StringType extends AnyType {
         return inst;
     }
 
-    protected _generateValidator(options: IValidateOptions, rules: IValidateRules = {}): InternalValidateFunction {
-        const superValidate = super._generateValidator(options, rules);
+    protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {
+        const data = super._generateValidateBody(options, rules);
         const strRules = rules.string || {};
         const {strictTypes} = options;
         const coerce = options.coerceTypes || options.coerceJSTypes;
-        let enums = !strRules.noEnumCheck && this.getFacet('enum');
+        const enums = !strRules.noEnumCheck && this.getFacet('enum');
         if (enums)
-            enums = new Set(enums);
+            data.variables.enums = new Set(enums);
         const minLength = !strRules.noMinLengthCheck && this.getFacet('minLength') || 0;
         const maxLength = !strRules.noMaxLengthCheck && this.getFacet('maxLength') || 0;
-        let patterns = !strRules.noMaxLengthCheck && this.getFacet('pattern');
+        const patterns = !strRules.noMaxLengthCheck && this.getFacet('pattern');
         if (patterns) {
-            patterns = Array.isArray(patterns) ?
+            data.variables.patterns = Array.isArray(patterns) ?
                 patterns.map(x => new RegExp(x)) :
                 (patterns ? [new RegExp(patterns)] : null);
         }
 
-        let code = `        
-return (value, path, log, context) => {        
-    value = superValidate(value, path, log);
-    if (value == null)
-        return value;
-`;
-
         if (!rules.noTypeCheck) {
-            code += `
+            data.code += `
     if (!(typeof value === 'string'`;
             if (!strictTypes)
-                code += ` || (typeof value === 'number' || typeof value === 'bigint')`;
-            code += `)
+                data.code += ` || (typeof value === 'number' || typeof value === 'bigint')`;
+            data.code += `)
     ) {
         log({
             message: 'Value must be a string',
@@ -75,11 +72,11 @@ return (value, path, log, context) => {
 `;
         }
 
-        code += `
+        data.code += `
     const v = String(value);`;
 
         if (enums)
-            code += `
+            data.code += `
     if (!enums.has(v)) {
         log({
             message: 'Value must be a one of enumerated value',
@@ -91,7 +88,7 @@ return (value, path, log, context) => {
 `;
 
         if (minLength != null)
-            code += `
+            data.code += `
     if (v.length < ${minLength}) {
         log({
                 message: 'Minimum accepted length is ${minLength}, actual ' + v.length,
@@ -105,7 +102,7 @@ return (value, path, log, context) => {
 `;
 
         if (maxLength)
-            code += `
+            data.code += `
     if (v.length > ${maxLength}) {
         log({
                 message: 'Maximum accepted length is ${maxLength}, actual ' + v.length,
@@ -119,7 +116,7 @@ return (value, path, log, context) => {
 `;
 
         if (patterns)
-            code += `
+            data.code += `
     let matched;
     const patternLen = patterns.length;
     for (let i = 0; i < patternLen; i++) {
@@ -139,11 +136,10 @@ return (value, path, log, context) => {
     }
 `;
 
-        code += `
-    return ${coerce ? 'v' : 'value'};\n}`;
+        if (coerce)
+            data.code += '\n    value = v;';
 
-        const fn = new Function('superValidate', 'enums', 'patterns', code);
-        return fn(superValidate, enums, patterns);
+        return data;
     }
 
 }

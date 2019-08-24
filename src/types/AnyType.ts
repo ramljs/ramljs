@@ -47,6 +47,11 @@ export interface IValidateRules {
     };
 }
 
+export interface IFunctionData {
+    code: string;
+    variables?: { [index: string]: any };
+}
+
 export type ValidateFunction = (value: any) => void;
 export type LogFunction = (err: IValidationError) => void;
 
@@ -58,7 +63,7 @@ export class ValidationError extends Error {
 
 export default class AnyType {
     protected _library: TypeLibrary;
-    protected _inherits: AnyType[];
+    protected _successors: AnyType[];
     public type: Array<string | spec10.TypeDeclaration>;
     public name: string;
     public displayName: string;
@@ -74,7 +79,7 @@ export default class AnyType {
         if (!name)
             throw new Error('You must provide "name" argument');
         this._definePrivate('_library', library);
-        this._definePrivate('_inherits', []);
+        this._definePrivate('_successors', []);
         this.type = [this.baseType];
         this.name = name;
         this.displayName = undefined;
@@ -91,16 +96,26 @@ export default class AnyType {
         return this._library;
     }
 
-    getFacet(n: string, defaultValue?: any) {
-        let x = this.hasOwnProperty(n) ? this[n] : this.facets[n];
+    getFacet(n: string, defaultValue?) {
+        let x: any;
+        /*
+         * a required property in the parent type cannot be changed to optional in the sub-type
+         */
+        if (n === 'required') {
+            const l = this._successors.length;
+            for (let i = 0; i < l; i++) {
+                x = this._successors[i].getFacet(n);
+                if (x) return x;
+            }
+            return this.required;
+        }
+        x = this.hasOwnProperty(n) ? this[n] : this.facets[n];
         if (x !== undefined)
             return x;
-        if (this._inherits.length) {
-            for (let i = this._inherits.length - 1; i >= 0; i--) {
-                x = this._inherits[i].getFacet(n);
-                if (x !== undefined)
-                    return x;
-            }
+        for (let i = this._successors.length - 1; i >= 0; i--) {
+            x = this._successors[i].getFacet(n);
+            if (x !== undefined)
+                return x;
         }
         return defaultValue;
     }
@@ -130,7 +145,7 @@ export default class AnyType {
                     const t = this.library.getType(n);
                     if (inst.storedType !== t.storedType)
                         throw new TypeError(`Can't extend ${inst.storedType} type from ${t.storedType} type`);
-                    inst._inherits.push(t);
+                    inst._successors.push(t);
                 }
             }
         }
@@ -179,12 +194,10 @@ export default class AnyType {
         };
     }
 
-    protected _generateValidator(options: IValidateOptions, rules?: IValidateRules): InternalValidateFunction {
-        let code = `        
-return (value, path, log, context) => {`;
-
-        if (!(options.ignoreRequired || (rules && rules.noRequiredCheck)) && this.getFacet('required')) {
-            code += `
+    protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {
+        const data = {code: '\nif (value === null) return value;', variables: {}};
+        if (!(options.ignoreRequired || rules.noRequiredCheck) && this.getFacet('required')) {
+            data.code += `     
     if (value == null) {
         log({
             message: 'Value required',
@@ -195,11 +208,21 @@ return (value, path, log, context) => {`;
     }
 `;
         }
-        code += `
-    return value;\n}`;
+        return data;
+    }
 
-        const fn = new Function(code);
-        return fn();
+    protected _generateValidator(options: IValidateOptions, rules: IValidateRules = {}): InternalValidateFunction {
+        const o = this._generateValidateBody(options, rules) || {code: ''};
+        const code = 'return (value, path, log, context) => {' + o.code + '\n    return value;\n}';
+        const varNames = [];
+        const varValues = [];
+        if (o.variables)
+            for (const n of Object.keys(o.variables)) {
+                varNames.push(n);
+                varValues.push(o.variables[n]);
+            }
+        const fn = new Function(...varNames, code);
+        return fn(...varValues);
     }
 
     protected _definePrivate(n: string, v: any) {

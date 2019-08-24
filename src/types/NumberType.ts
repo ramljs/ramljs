@@ -1,4 +1,8 @@
-import AnyType, {InternalValidateFunction, IValidateOptions, IValidateRules, LogFunction} from './AnyType';
+import AnyType, {
+    IFunctionData,
+    IValidateOptions,
+    IValidateRules,
+} from './AnyType';
 import * as spec10 from "../spec10";
 import {TypeLibrary} from "./TypeLibrary";
 
@@ -67,14 +71,14 @@ export default class NumberType extends AnyType {
         return inst;
     }
 
-    protected _generateValidator(options: IValidateOptions, rules: IValidateRules = {}): InternalValidateFunction {
-        const superValidate = super._generateValidator(options, rules);
+    protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {
+        const data = super._generateValidateBody(options, rules);
         const numRules = rules.number || {};
         const {strictTypes} = options;
         const coerce = options.coerceTypes || options.coerceJSTypes;
-        let enums = !numRules.noEnumCheck && this.getFacet('enum');
+        const enums = !numRules.noEnumCheck && this.getFacet('enum');
         if (enums)
-            enums = new Set(enums);
+            data.variables.enums = new Set(enums);
 
         const format = !numRules.noFormatCheck && this.getFacet('format');
         let minimum;
@@ -88,28 +92,21 @@ export default class NumberType extends AnyType {
             maximum = maximum != null ? maximum : MaxValues[format];
         }
         const multipleOf = !numRules.noMultipleOf && this.getFacet('multipleOf');
-
         const bigFormat = ['bigint', 'int64', 'uint64', 'long'].includes(format);
         const intFormat = IntegerTypes.includes(format);
-        const errorMsg1 = 'Value must be ' +
+
+        data.variables.errorMsg1 = 'Value must be ' +
             (intFormat ? 'an integer' : 'a number') +
             (strictTypes ? '' : ' or ' +
                 (intFormat ? 'integer' : 'number') +
                 ' formatted string');
 
-        let code = `        
-return (value, path, log, context) => {        
-    value = superValidate(value, path, log);
-    if (value == null)
-        return value;
-`;
-
         if (!rules.noTypeCheck) {
-            code += `
+            data.code += `
     if (!((typeof value === 'number' || typeof value === 'bigint')`;
             if (!strictTypes)
-                code += ` || (typeof value === 'string' && value)`;
-            code += `)
+                data.code += ` || (typeof value === 'string' && value)`;
+            data.code += `)
     ) {
         log({
             message: errorMsg1,
@@ -121,7 +118,7 @@ return (value, path, log, context) => {
 `;
         }
 
-        code += `
+        data.code += `
     let n;
     try {
         n = ${bigFormat ? 'BigInt(value)' : 'Number(value)'};
@@ -145,7 +142,7 @@ return (value, path, log, context) => {
 `;
 
         if (intFormat)
-            code += `
+            data.code += `
     if (typeof n === 'number' && (n - Math.floor(n) > 0)) {
         log({
                 message: errorMsg1,
@@ -158,7 +155,7 @@ return (value, path, log, context) => {
 `;
 
         if (enums)
-            code += `
+            data.code += `
     if (!enums.has(n)) {
         log({
             message: 'Value must be a one of enumerated value',
@@ -170,7 +167,7 @@ return (value, path, log, context) => {
 `;
 
         if (multipleOf)
-            code += `
+            data.code += `
     const c = typeof n === 'bigint' ?
         n / BigInt(${multipleOf}) * BigInt(${multipleOf}) :
         Math.trunc(n / ${multipleOf}) * ${multipleOf};
@@ -186,7 +183,7 @@ return (value, path, log, context) => {
 `;
 
         if (minimum != null)
-            code += `
+            data.code += `
     if (n < ${minimum}) {
         log({
                 message: 'Minimum accepted value is ${minimum}, actual ' + n,
@@ -201,7 +198,7 @@ return (value, path, log, context) => {
 `;
 
         if (maximum)
-            code += `
+            data.code += `
     if (n > ${maximum}) {
         log({
                 message: 'Maximum accepted value is ${maximum}, actual ' + n,
@@ -215,11 +212,10 @@ return (value, path, log, context) => {
     }
 `;
 
-        code += `
-    return ${coerce ? 'n' : 'value'};\n}`;
+        if (coerce)
+            data.code += '\n    value = n;';
 
-        const fn = new Function('superValidate', 'enums', 'errorMsg1', code);
-        return fn(superValidate, enums, errorMsg1);
+        return data;
     }
 
 }

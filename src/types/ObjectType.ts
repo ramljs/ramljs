@@ -52,7 +52,7 @@ export default class ObjectType extends AnyType {
     }
 
     _getProperties(target) {
-        for (const t of this._inherits) {
+        for (const t of this._successors) {
             (t as ObjectType)._getProperties(target);
         }
     }
@@ -88,7 +88,7 @@ export default class ObjectType extends AnyType {
 
         // Generate sub validators for inherited types
         const inheritedValidators = [];
-        for (const t of this._inherits) {
+        for (const t of this._successors) {
             // @ts-ignore
             inheritedValidators.push(t._generateValidator(options, {
                 noRequiredCheck: true,
@@ -142,7 +142,7 @@ return (value, path, log, context) => {
     const valueLen = valueKeys.length;
 `;
 
-        if (!additionalProperties && !this._inherits.length)
+        if (!additionalProperties && !this._successors.length)
             code += `    
     if (valueKeys.some(x => !properties.hasOwnProperty(x))) {
         log({

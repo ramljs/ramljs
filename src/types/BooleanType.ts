@@ -1,4 +1,8 @@
-import AnyType, {LogFunction, InternalValidateFunction, IValidateOptions, IValidateRules} from './AnyType';
+import AnyType, {
+    IValidateOptions,
+    IValidateRules,
+    IFunctionData
+} from './AnyType';
 
 export default class BooleanType extends AnyType {
 
@@ -10,24 +14,16 @@ export default class BooleanType extends AnyType {
         return 'scalar';
     }
 
-    protected _generateValidator(options: IValidateOptions, rules: IValidateRules = {}): InternalValidateFunction {
-        const superValidate = super._generateValidator(options, rules);
+    protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {
+        const data = super._generateValidateBody(options, rules);
         const {strictTypes} = options;
         const coerce = options.coerceTypes || options.coerceJSTypes;
-
-        let code = `        
-return (value, path, log, context) => {        
-    value = superValidate(value, path, log);
-    if (value == null)
-        return value;
-`;
-
         if (!rules.noTypeCheck) {
-            code += `
+            data.code += `
             if (!(typeof value === 'boolean'`;
             if (!strictTypes)
-                code += ` || (value === 0 || value === 1 || value === 'false' || value === 'true')`;
-            code += `)
+                data.code += ` || (value === 0 || value === 1 || value === 'false' || value === 'true')`;
+            data.code += `)
             ) {
                 log({
                     message: 'Value must be a boolean',
@@ -38,12 +34,9 @@ return (value, path, log, context) => {
             }            
 `;
         }
-
-        code += `
-    return ${coerce && !strictTypes ? 'value === \'false\' ? false : !!value' : 'value'};\n}`;
-
-        const fn = new Function('superValidate', code);
-        return fn(superValidate);
+        if (coerce && !strictTypes)
+            data.code += '\n    value = value === \'false\' ? false : !!value';
+        return data;
     }
 
 }

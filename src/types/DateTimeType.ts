@@ -1,4 +1,8 @@
-import AnyType, {InternalValidateFunction, IValidateOptions, IValidateRules, LogFunction} from './AnyType';
+import AnyType, {
+    IFunctionData,
+    IValidateOptions,
+    IValidateRules,
+} from './AnyType';
 import * as spec10 from "../spec10";
 import {TypeLibrary} from "./TypeLibrary";
 
@@ -26,8 +30,8 @@ export default class DateTimeType extends AnyType {
         return inst;
     }
 
-    protected _generateValidator(options: IValidateOptions, rules: IValidateRules = {}): InternalValidateFunction {
-        const superValidate = super._generateValidator(options);
+    protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {
+        const data = super._generateValidateBody(options, rules);
         const dateRules = rules.date || {};
         const coerceTypes = options.coerceTypes;
         const coerceJSTypes = options.coerceJSTypes;
@@ -39,15 +43,8 @@ export default class DateTimeType extends AnyType {
         const formatDate = this._formatDate();
         const formatDateItems = this._formatDateItems();
 
-        let code = `        
-return (value, path, log, context) => {        
-    value = superValidate(value, path, log);
-    if (value == null)
-        return value;
-`;
-
         if (!rules.noTypeCheck) {
-            code += `
+            data.code += `
     if (!(value instanceof Date || typeof value === 'string')) {
         log({
             message: 'Value must be a ${baseType} formatted string or Date instance',
@@ -59,15 +56,13 @@ return (value, path, log, context) => {
 `;
         }
 
-        code += `
+        data.code += `
     let d = value instanceof Date ? value : undefined;
     let m;    
     if (typeof value === 'string') {`;
-        if (rfc2616)
-            code += `
+        if (rfc2616) data.code += `        
         d = new Date(value);`;
-        else
-            code += `
+        else data.code += `       
         m = matchDatePattern(value);
         if (!m) {
             log({
@@ -79,13 +74,12 @@ return (value, path, log, context) => {
             return;
         }
         ` + (fastDateValidation ?
-                `return ${coerceTypes ? 'formatDateItems(m)' : 'value'};` :
-                `d = new Date(dateItemsToISO(m));
+            `return ${coerceTypes ? 'formatDateItems(m)' : 'value'};` :
+            `d = new Date(dateItemsToISO(m));
         d = isValidDate(d) && fastParseInt(m[3]) === d.getUTCDate() ? d : null;`) + `                                     
     }    
 `;
-
-        code += `
+        data.code += `
     if (!isValidDate(d)) {
         log({
                 message: 'Value must be a ${baseType} formatted string or Date instance',
@@ -94,15 +88,20 @@ return (value, path, log, context) => {
             }
         );
         return;
-    }        
-    return ${coerceJSTypes ? 'd' :
-            (coerceTypes ? 'm ? formatDateItems(m) : formatDate(d)' : 'value')};\n}`;
+    }`;
 
-        const fn = new Function('superValidate', 'isValidDate', 'matchDatePattern',
-            'formatDateItems', 'formatDate', 'dateItemsToISO', 'fastParseInt', code);
-        return fn(superValidate, isValidDate,
+        if (coerceJSTypes)
+            data.code += '\n    value = d;';
+        else if (coerceTypes)
+            data.code += '\n    value = m ? formatDateItems(m) : formatDate(d);';
+
+        data.variables = {
+            ...data.variables,
+            isValidDate,
             matchDatePattern, formatDateItems, formatDate,
-            dateItemsToISO, fastParseInt);
+            dateItemsToISO, fastParseInt
+        };
+        return data;
     }
 
     protected _formatDate() {

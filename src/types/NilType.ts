@@ -1,4 +1,8 @@
-import AnyType, {InternalValidateFunction, IValidateOptions, IValidateRules, LogFunction} from './AnyType';
+import AnyType, {
+    IFunctionData,
+    IValidateOptions,
+    IValidateRules,
+} from './AnyType';
 import * as spec10 from "../spec10";
 
 export default class NilType extends AnyType {
@@ -18,18 +22,16 @@ export default class NilType extends AnyType {
         return super.extend(decl) as NilType;
     }
 
-    protected _generateValidator(options: IValidateOptions, rules: IValidateRules = {}): InternalValidateFunction {
-        const superValidate = super._generateValidator(options, rules);
-        return (value: any, path: string, log?: LogFunction) => {
-            value = superValidate(value, path, log);
-            if (value == null)
-                return value;
+    protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {
+        const data = super._generateValidateBody(options, rules);
+        data.code += `
             log({
                 message: 'Value must be null',
                 errorType: 'TypeError',
                 path
-            });
-        };
+            });        
+        `;
+        return data;
     }
 
 }
