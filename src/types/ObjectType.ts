@@ -1,24 +1,37 @@
-import AnyType, {InternalValidateFunction, IValidateOptions, IValidateRules, LogFunction} from './AnyType';
-import * as spec10 from "../spec10";
-import {TypeLibrary} from "./TypeLibrary";
+import AnyType, {
+    IValidatorGenerateOptions,
+    IFunctionData
+} from './AnyType';
+import * as spec10 from '../spec10';
+import {TypeLibrary} from './TypeLibrary';
+
+const BuiltinFacets = ['discriminator', 'discriminatorValue', 'additionalProperties',
+    'minProperties', 'maxProperties'];
 
 export default class ObjectType extends AnyType {
 
-    public discriminator?: string;
-    public discriminatorValue?: string;
     public properties: { [index: string]: AnyType };
-    public minProperties?: number;
-    public maxProperties?: number;
-    public additionalProperties?: boolean;
 
-    constructor(library: TypeLibrary, name: string) {
-        super(library, name);
-        this.discriminator = undefined;
-        this.discriminatorValue = undefined;
+    constructor(library?: TypeLibrary, decl?: spec10.ObjectTypeDeclaration) {
+        super(library, decl);
         this.properties = {};
-        this.minProperties = undefined;
-        this.maxProperties = undefined;
-        this.additionalProperties = undefined;
+        BuiltinFacets.forEach(n => {
+            if (decl[n] !== undefined)
+                this.set(n, decl[n]);
+        });
+        if (Array.isArray(decl.properties)) {
+            for (const prop of decl.properties) {
+                this.properties[prop.name] = library.createType(prop);
+            }
+        } else if (typeof decl.properties === 'object') {
+            for (const k of Object.keys(decl.properties)) {
+                const prop = decl.properties[k] as spec10.TypeDeclaration;
+                this.properties[k] = library.createType({
+                    ...prop,
+                    name: k
+                });
+            }
+        }
     }
 
     get baseType(): string {
@@ -29,90 +42,99 @@ export default class ObjectType extends AnyType {
         return 'object';
     }
 
-    extend(decl: spec10.ObjectTypeDeclaration): ObjectType {
-        const inst = super.extend(decl) as ObjectType;
-        ['discriminator', 'discriminatorValue', 'minProperties', 'maxProperties', 'additionalProperties'].forEach(n => {
-            if (decl[n] !== undefined)
-                inst[n] = decl[n];
-        });
-        if (Array.isArray(decl.properties)) {
-            for (const prop of decl.properties) {
-                this.properties[prop.name] = this.library.createType(prop);
-            }
-        } else if (typeof decl.properties === 'object') {
-            for (const k of Object.keys(decl.properties)) {
-                const prop = decl.properties[k] as spec10.TypeDeclaration;
-                this.properties[k] = this.library.createType({
-                    ...prop,
-                    name: k
-                });
-            }
-        }
-        return inst;
+    hasFacet(n: string): boolean {
+        return BuiltinFacets.includes(n) || super.hasFacet(n);
     }
 
-    _getProperties(target) {
-        for (const t of this.type) {
-            (t as ObjectType)._getProperties(target);
+    clone(): ObjectType {
+        const t = super.clone() as ObjectType;
+        for (const k of Object.keys(this.properties)) {
+            t.properties[k] = this.properties[k].clone();
+        }
+        return t;
+    }
+
+    mergeOnto(target: ObjectType, overwrite?: boolean) {
+        if (this.attributes.minProperties != null) {
+            target.attributes.minProperties = target.attributes.minProperties != null ?
+                Math.min(target.attributes.minProperties, this.attributes.minProperties) :
+                this.attributes.minProperties;
+        }
+        if (this.attributes.maxProperties != null) {
+            target.attributes.maxProperties = target.attributes.maxProperties != null ?
+                Math.max(target.attributes.maxProperties, this.attributes.maxProperties) :
+                this.attributes.maxProperties;
+        }
+        for (const k of Object.keys(this.properties)) {
+            target.properties[k] = this.properties[k].clone();
+        }
+        if (overwrite) {
+            BuiltinFacets.forEach(n => {
+                if (this.attributes[n] !== undefined)
+                    target.attributes[n] = this.attributes[n];
+            });
         }
     }
 
-    protected _generateValidator(options: IValidateOptions, rules: IValidateRules = {}): InternalValidateFunction {
-        const superValidate = super._generateValidator(options, rules);
-        const objRules = rules.object || {};
+    protected _generateValidationCode(options: IValidatorGenerateOptions): IFunctionData {
+        const data = super._generateValidationCode(options);
 
-        let discriminator = !objRules.noDiscriminatorCheck && this.get('discriminator');
-        if (discriminator)
-            discriminator = String(discriminator).replace(/'/g, '\\\'');
-        let discriminatorValue = !objRules.noDiscriminatorCheck && this.get('discriminatorValue', this.name);
-        if (discriminatorValue)
-            discriminatorValue = String(discriminatorValue).replace(/'/g, '\\\'');
-        const additionalProperties = objRules.noAdditionalPropertiesCheck ||
-            this.get('additionalProperties', true);
-        const minProperties = (!objRules.noMinPropertiesCheck &&
-            parseInt(this.get('minProperties'), 10)) || 0;
-        const maxProperties = (!objRules.noMaxPropertiesCheck &&
-            parseInt(this.get('maxProperties'), 10)) || 0;
+        const discriminator = data.variables.discriminator = this.attributes.discriminator;
+        data.variables.discriminatorValue = this.attributes.discriminatorValue || this.name;
+        const additionalProperties = data.variables.additionalProperties =
+            this.attributes.additionalProperties != null ?
+                this.attributes.additionalProperties : true;
+        const minProperties = data.variables.minProperties =
+            parseInt(this.attributes.minProperties, 10) || 0;
+        const maxProperties = data.variables.maxProperties =
+            parseInt(this.attributes.maxProperties, 10) || 0;
 
-        const properties = this.properties;
-        const propertyKeys = Object.keys(properties);
+        let ignoreRequire = options.ignoreRequire;
+        const properties = data.variables.properties = this.properties;
+        const propertyKeys = data.variables.propertyKeys = Object.keys(properties);
+        let prePropertyValidators;
         let propertyValidators;
         if (propertyKeys.length) {
-            propertyValidators = {};
+            // create a new ignoreRequire for nested properties
+            if (Array.isArray(ignoreRequire)) {
+                const name = this.name;
+                ignoreRequire = data.variables.ignoreRequire =
+                    ignoreRequire.reduce((result, x) => {
+                        if (x.startsWith(name + '.'))
+                            result.push(x.substring(name.lengh + 1));
+                        return result;
+                    }, []);
+            }
+
+            /* We have to be sure if value is the object type that we are looking for
+             * before coercing or removing additional properties.
+             * If discriminator is not defined we can not know the object type.
+             * So we apply a pre validation.
+             */
+            if (options.isUnion && !discriminator &&
+                (options.coerceTypes || options.coerceJSTypes || options.removeAdditional)) {
+                prePropertyValidators = data.variables.prePropertyValidators = {};
+                for (const k of propertyKeys) {
+                    prePropertyValidators[k] = properties[k].validator({
+                        ...options,
+                        coerceTypes: false,
+                        coerceJSTypes: false,
+                        removeAdditional: false,
+                        maxArrayErrors: 0,
+                        maxObjectErrors: 0,
+                        throwOnError: false
+                    });
+                }
+            }
+            propertyValidators = data.variables.propertyValidators = {};
             for (const k of propertyKeys) {
-                // noinspection TypeScriptUnresolvedFunction
-                // @ts-ignore
-                propertyValidators[k] = properties[k]._generateValidator(options);
+                propertyValidators[k] = properties[k].validator(options);
             }
         }
 
-        // Generate sub validators for inherited types
-        const inheritedValidators = [];
-        for (const t of this.type) {
-            // @ts-ignore
-            inheritedValidators.push(t._generateValidator(options, {
-                noRequiredCheck: true,
-                noTypeCheck: true,
-                object: {
-                    noAdditionalPropertiesCheck: true,
-                    noDiscriminatorCheck: true,
-                    noMinPropertiesCheck: true,
-                    noMaxPropertiesCheck: true,
-                }
-            }));
-        }
-
-        let code = `        
-return (value, path, log, context) => {        
-    value = superValidate(value, path, log);
-    if (value == null)
-        return value;
-`;
-
-        if (!rules.noTypeCheck)
-            code += `
+        data.code += `
     if (typeof value !== 'object' || Array.isArray(value)) {
-        log({
+        error({
                 message: 'Value must be an object',
                 errorType: 'TypeError',
                 path
@@ -123,78 +145,77 @@ return (value, path, log, context) => {
 `;
 
         if (discriminator)
-            code += `
-    if (value['${discriminator}'] !== '${discriminatorValue}') {
-        log({
-                message: 'Object\`s discriminator property (${discriminator}) does not match to "${discriminatorValue}"',
-                errorType: 'TypeError',
-                log,
-                discriminatorValue: '${discriminatorValue}',
-                actual: value['${discriminator}'],
-            }
-        );
+            data.code += `
+    if (value[discriminator] !== discriminatorValue) {
+        error({
+            message: 'Object\`s discriminator property (' + discriminator + 
+                ') does not match to "' + discriminatorValue + '"',
+            errorType: 'TypeError',
+            error,
+            discriminatorValue,
+            actual: value[discriminator],
+        });
         return;
     }
 `;
 
-        code += `    
-    const valueKeys = (context && context.valueKeys) || Object.keys(value);
+        if (!additionalProperties || propertyKeys.length)
+            data.code += `    
+    const valueKeys = Object.keys(value);
     const valueLen = valueKeys.length;
 `;
 
-        if (!additionalProperties && !this.type.length)
-            code += `    
+        if (!additionalProperties)
+            data.code += `    
     if (valueKeys.some(x => !properties.hasOwnProperty(x))) {
-        log({
-                message: 'Object type does not allow additional properties',
-                errorType: 'TypeError',
-                path
-            }
-        );
+        error({
+            message: 'Object type does not allow additional properties',
+            errorType: 'TypeError',
+            path
+        });
         return;
     }
 `;
 
-        if (minProperties)
-            code += `    
-    if (valueLen < ${minProperties}) {        
-        log({
-                message: \`Minimum accepted properties ${minProperties}, actual \${valueLen}\`,
-                errorType: 'range-error',
-                path,
-                range: [${minProperties}, ${maxProperties}],
-                actual: valueLen
-            }
-        );
+        if (minProperties) {
+            data.code += `
+    if (valueLen < minProperties) {
+        error({
+            message: 'Minimum accepted properties ' + minProperties + ', actual ' + valueLen,
+            errorType: 'range-error',
+            path,
+            min: ${minProperties}${maxProperties ? ', max: ' + maxProperties : ''},
+            actual: valueLen
+        });
         return;
     }
 `;
+        }
 
         if (maxProperties)
-            code += `    
-    if (valueLen > ${maxProperties}) {
-        log({
-                message: \`Maximum accepted properties ${maxProperties}, actual \${valueLen}\`,
-                errorType: 'range-error',
-                path,
-                range: [${minProperties}, ${maxProperties}],
-                actual: valueLen
-            }
-        );
+            data.code += `
+    if (valueLen > maxProperties) {
+        error({
+            message: 'Maximum accepted properties ' + maxProperties +', actual ' + valueLen,
+            errorType: 'range-error',
+            path,
+            ${minProperties ? 'min: ' + minProperties + ', ' : ''}max: ${maxProperties},
+            actual: valueLen
+        });
         return;
     }
 `;
 
-        if (propertyKeys.length) {
-            code += `
-    const propertyLen = ${propertyKeys.length};               
-    // const keysLen = valueKeys.length;
+        if (propertyValidators) {
+            data.code += `
+    // const propertyLen = ${propertyValidators.length};
+    const keysLen = valueKeys.length;
     const result = {};
     for (let i = 0; i < keysLen; i++) {
         const k = valueKeys[i];
         const propc = propertyValidators[k];
         if (propc) {
-            const vv = propc(value[k], path + '.' + k, log);
+            const vv = propc(value[k], path + '.' + k, error);
             if (vv === undefined && !allErrors)
                 return undefined;
             if (vv !== undefined)
@@ -203,7 +224,7 @@ return (value, path, log, context) => {
             result[k] = value[k];
         } else if (!removeAdditional) {
             errLen++;
-            log({
+            error({
                     message: 'Object type does not allow additional properties',
                     errorType: 'TypeError',
                     path: path + '.' + k
@@ -211,94 +232,13 @@ return (value, path, log, context) => {
             );
         }
     }
-    value = result;    
-`;
+    value = result;
+        `;
         }
 
+        if (options.coerceTypes || options.coerceJSTypes)
+            data.code += '\n    value = v;';
 
-        code += `
-    if (inheritedValidators) {
-        context = {valueKeys};
-        let k = inheritedValidators.length;
-        for (let i = 0; i < k; i++) {
-            value = inheritedValidators[i](value, path, log, context);
-        }
-    }
-`;
-
-        code += `
-    return value;\n}`;
-
-        const fn = new Function('superValidate', 'properties', 'inheritedValidators', code);
-        return fn(superValidate, properties, inheritedValidators);
-        /*
-               // Store options in local variables.
-                const discriminatorCheck = !(objOptions && objOptions.noDiscriminatorCheck);
-                const typeCheck = !(objOptions && objOptions.noTypeCheck);
-                const minPropertiesCheck = !(objOptions && objOptions.noMinPropertiesCheck);
-                const maxPropertiesCheck = !(objOptions && objOptions.noMaxPropertiesCheck);
-                const additionalPropertiesCheck = !(objOptions && objOptions.noAdditionalPropertiesCheck);
-                const {coerceTypes, coerceJSTypes} = options;
-                const coerce = coerceTypes || coerceJSTypes;
-
-                // Store facets in local variables.
-                const additionalProperties = this.getFacet('additionalProperties', true);
-                const discriminator = discriminatorCheck && this.getFacet('discriminator');
-                const discriminatorValue = discriminatorCheck && this.getFacet('discriminatorValue', this.name);
-                const minProperties = minPropertiesCheck && this.getFacet('minProperties');
-                const maxProperties = maxPropertiesCheck && this.getFacet('maxProperties');
-
-                const removeAdditional = options.removeAdditional === 'all' ||
-                    (options.removeAdditional && !additionalProperties);
-
-                // Generate sub validators for properties
-                // const properties = this.properties;
-                // const propertyKeys = Object.keys(properties);
-                // let propertyValidators;
-                if (propertyKeys.length) {
-                    propertyValidators = {};
-                    for (const k of propertyKeys) {
-                        // noinspection TypeScriptUnresolvedFunction
-                        // @ts-ignore
-                        propertyValidators[k] = properties[k]._generateValidator(options);
-                    }
-                }
-
-                return (value: any, path: string, log?: LogFunction, context?: any) => {
-
-                    const valueKeys = (context && context.valueKeys) || Object.keys(value);
-                    let errLen = 0;
-
-                    // If this is a structured object
-                    if (coerce && propertyKeys.length) {
-                        const keysLen = valueKeys.length;
-                        const result = {};
-                        for (let i = 0; i < keysLen; i++) {
-                            const k = valueKeys[i];
-                            const propc = propertyValidators[k];
-                            if (propc) {
-                                const vv = propc(value[k], path + '.' + k, log);
-                                if (vv === undefined && !allErrors)
-                                    return undefined;
-                                if (vv !== undefined)
-                                    result[k] = vv;
-                            } else if (!removeAdditional && additionalProperties) {
-                                result[k] = value[k];
-                            } else if (!removeAdditional) {
-                                errLen++;
-                                log({
-                                        message: 'Object type does not allow additional properties',
-                                        errorType: 'TypeError',
-                                        path: path + '.' + k
-                                    }
-                                );
-                            }
-                        }
-                        value = result;
-                    }
-
-                    return !errLen ? value : undefined;
-                };
-                */
+        return data;
     }
 }

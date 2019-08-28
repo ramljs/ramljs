@@ -6,19 +6,19 @@ describe('BooleanType', function() {
 
   const library = new TypeLibrary();
 
-  it('should validate compatible values', function() {
+  it('should apply type check', function() {
     const typ1 = library.createType({
       name: 'typ1',
       type: 'boolean'
     });
-    const validate = typ1.validator();
-    assert.strictEqual(validate(null), null);
-    assert.strictEqual(validate(false), false);
-    assert.strictEqual(validate(true), true);
-    assert.strictEqual(validate(0), 0);
-    assert.strictEqual(validate(1), 1);
-    assert.strictEqual(validate('false'), 'false');
-    assert.strictEqual(validate('true'), 'true');
+    const validate = typ1.validator({throwOnError: true});
+    assert.deepStrictEqual(validate(null), {valid: true, value: null});
+    assert.deepStrictEqual(validate(false), {valid: true, value: false});
+    assert.deepStrictEqual(validate(true), {valid: true, value: true});
+    assert.deepStrictEqual(validate(0), {valid: true, value: 0});
+    assert.deepStrictEqual(validate(1), {valid: true, value: 1});
+    assert.deepStrictEqual(validate('false'), {valid: true, value: 'false'});
+    assert.deepStrictEqual(validate('true'), {valid: true, value: 'true'});
     assert.throws(() => validate(12), /Value must be a boolean/);
     assert.throws(() => validate(''), /Value must be a boolean/);
     assert.throws(() => validate([]), /Value must be a boolean/);
@@ -30,7 +30,7 @@ describe('BooleanType', function() {
       name: 'typ1',
       type: 'boolean'
     });
-    const validate = typ1.validator({strictTypes: true});
+    const validate = typ1.validator({strictTypes: true, throwOnError: true});
     validate(false);
     validate(true);
     validate(null);
@@ -47,12 +47,12 @@ describe('BooleanType', function() {
       type: 'boolean'
     });
     const validate = typ1.validator({coerceTypes: true});
-    assert.strictEqual(validate(false), false);
-    assert.strictEqual(validate(true), true);
-    assert.strictEqual(validate(0), false);
-    assert.strictEqual(validate(1), true);
-    assert.strictEqual(validate('false'), false);
-    assert.strictEqual(validate('true'), true);
+    assert.deepStrictEqual(validate(false), {valid: true, value: false});
+    assert.deepStrictEqual(validate(true), {valid: true, value: true});
+    assert.deepStrictEqual(validate(0), {valid: true, value: false});
+    assert.deepStrictEqual(validate(1), {valid: true, value: true});
+    assert.deepStrictEqual(validate('false'), {valid: true, value: false});
+    assert.deepStrictEqual(validate('true'), {valid: true, value: true});
   });
 
   it('should coerce default value to boolean type', function() {
@@ -62,7 +62,7 @@ describe('BooleanType', function() {
       default: 1
     });
     const validate = typ1.validator({coerceTypes: true});
-    assert.strictEqual(validate(), true);
+    assert.deepStrictEqual(validate(), {valid: true, value: true});
   });
 
 });

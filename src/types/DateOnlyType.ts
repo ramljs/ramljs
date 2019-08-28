@@ -1,8 +1,8 @@
-import DateTimeType from './DateTimeType';
-import * as spec10 from "../spec10";
-import {TypeLibrary} from "./TypeLibrary";
+import DateType from './DateType';
+import * as spec10 from '../spec10';
+import {TypeLibrary} from './TypeLibrary';
 
-export default class DateOnlyType extends DateTimeType {
+export default class DateOnlyType extends DateType {
 
     constructor(library?: TypeLibrary, decl?: spec10.DateTypeDeclaration) {
         super(library, {
@@ -13,14 +13,6 @@ export default class DateOnlyType extends DateTimeType {
 
     get baseType(): string {
         return 'date-only';
-    }
-
-    get format() {
-        return undefined;
-    }
-
-    set format(v) {
-        this.set('format', undefined);
     }
 
     protected _formatDate() {

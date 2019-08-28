@@ -20,12 +20,12 @@ describe('AnyType', function() {
       facets: [{name: 'facet1', type: 'any'}]
     });
     assert.strictEqual(typ1.name, 'typ1');
-    assert.strictEqual(typ1.type[0].name, 'any');
-    assert.strictEqual(typ1.displayName, 'displayName');
-    assert.strictEqual(typ1.description, 'description');
-    assert.strictEqual(typ1.example, 'example');
-    assert.strictEqual(typ1.required, true);
-    assert.strictEqual(typ1.default, 0);
+    assert.strictEqual(typ1.baseType, 'any');
+    assert.strictEqual(typ1.attributes.displayName, 'displayName');
+    assert.strictEqual(typ1.attributes.description, 'description');
+    assert.strictEqual(typ1.attributes.example, 'example');
+    assert.strictEqual(typ1.attributes.required, true);
+    assert.strictEqual(typ1.attributes.default, 0);
     assert.deepStrictEqual(typ1.annotations, {a: 1});
     assert.deepStrictEqual(typ1.facets.facet1.baseType, 'any');
     typ1 = library.createType({
@@ -33,7 +33,7 @@ describe('AnyType', function() {
       type: 'any',
       examples: ['examples']
     });
-    assert.deepStrictEqual(typ1.examples, ['examples']);
+    assert.deepStrictEqual(typ1.attributes.examples, ['examples']);
   });
 
   it('should check name argument in constructor', function() {
@@ -51,7 +51,7 @@ describe('AnyType', function() {
       default: 123
     });
     const validate = typ1.validator();
-    assert.strictEqual(validate(null), 123);
+    assert.strictEqual(validate(null).value, 123);
   });
 
   it('should not validate null value if required=true', function() {
@@ -60,11 +60,28 @@ describe('AnyType', function() {
       type: 'any',
       required: true
     });
-    const validate = typ1.validator();
-    assert.strictEqual(validate(0), 0);
-    assert.strictEqual(validate('0'), '0');
+    const validate = typ1.validator({throwOnError: true});
+    assert.strictEqual(validate(0).value, 0);
+    assert.strictEqual(validate('0').value, '0');
     assert.throws(() => validate(), /Value required/);
     assert.throws(() => validate(null), /Value required/);
+  });
+
+  it('should return "errors" property on error', function() {
+    const typ1 = library.createType({
+      name: 'typ1',
+      type: 'any',
+      required: true
+    });
+    const validate = typ1.validator();
+    assert.deepStrictEqual(validate(), {
+      valid: false,
+      errors: [{
+        errorType: 'ValueRequiredError',
+        message: 'Value required',
+        path: ''
+      }]
+    });
   });
 
   it('should types inherit from compatible types', function() {

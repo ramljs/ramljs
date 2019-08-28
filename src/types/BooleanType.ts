@@ -1,6 +1,5 @@
 import AnyType, {
-    IValidateOptions,
-    IValidateRules,
+    IValidatorGenerateOptions,
     IFunctionData
 } from './AnyType';
 
@@ -14,18 +13,17 @@ export default class BooleanType extends AnyType {
         return 'scalar';
     }
 
-    protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {
-        const data = super._generateValidateBody(options, rules);
+    protected _generateValidationCode(options: IValidatorGenerateOptions): IFunctionData {
+        const data = super._generateValidationCode(options);
         const {strictTypes} = options;
         const coerce = options.coerceTypes || options.coerceJSTypes;
-        if (!rules.noTypeCheck) {
-            data.code += `
+        data.code += `
             if (!(typeof value === 'boolean'`;
-            if (!strictTypes)
-                data.code += ` || (value === 0 || value === 1 || value === 'false' || value === 'true')`;
-            data.code += `)
+        if (!strictTypes)
+            data.code += ` || (value === 0 || value === 1 || value === 'false' || value === 'true')`;
+        data.code += `)
             ) {
-                log({
+                error({
                     message: 'Value must be a boolean',
                     errorType: 'TypeError',
                     path
@@ -33,7 +31,6 @@ export default class BooleanType extends AnyType {
                 return;
             }            
 `;
-        }
         if (coerce && !strictTypes)
             data.code += '\n    value = value === \'false\' ? false : !!value';
         return data;

@@ -6,16 +6,19 @@ describe('NumberType', function() {
 
   const library = new TypeLibrary();
 
-  it('should validate compatible values', function() {
+  it('should apply type check', function() {
     const prm1 = library.createType({
       name: 'prm1',
       type: 'number'
     });
-    const validate = prm1.validator();
-    assert.strictEqual(validate(0), 0);
-    assert.strictEqual(validate(1.1), 1.1);
-    assert.strictEqual(validate(BigInt(123)), BigInt(123));
-    assert.strictEqual(validate('0'), '0');
+    const validate = prm1.validator({throwOnError: true});
+    assert.deepStrictEqual(validate(0), {valid: true, value: 0});
+    assert.deepStrictEqual(validate(1.1), {valid: true, value: 1.1});
+    assert.deepStrictEqual(validate(BigInt(123)), {
+      valid: true,
+      value: BigInt(123)
+    });
+    assert.deepStrictEqual(validate('0'), {valid: true, value: '0'});
     assert.throws(() => validate(''), /Value must be a number or number formatted string/);
     assert.throws(() => validate(false), /Value must be a number or number formatted string/);
     assert.throws(() => validate([]), /Value must be a number or number formatted string/);
@@ -27,7 +30,7 @@ describe('NumberType', function() {
       name: 'prm1',
       type: 'number'
     });
-    const validate = prm1.validator({strictTypes: true});
+    const validate = prm1.validator({strictTypes: true, throwOnError: true});
     validate(0);
     validate(123.4);
     assert.throws(() => validate('0'), /Value must be a number/);
@@ -40,8 +43,8 @@ describe('NumberType', function() {
       type: 'number'
     });
     const validate = prm1.validator({coerceTypes: true});
-    assert.strictEqual(validate('0'), 0);
-    assert.strictEqual(validate('1.23'), 1.23);
+    assert.deepStrictEqual(validate('0'), {valid: true, value: 0});
+    assert.deepStrictEqual(validate('1.23'), {valid: true, value: 1.23});
   });
 
   it('should coerce default value to number type', function() {
@@ -51,7 +54,7 @@ describe('NumberType', function() {
       default: '0'
     });
     const validate = prm1.validator({coerceTypes: true});
-    assert.strictEqual(validate(), 0);
+    assert.deepStrictEqual(validate(), {valid: true, value: 0});
   });
 
   it('should allow enum values only if set', function() {
@@ -60,9 +63,9 @@ describe('NumberType', function() {
       type: 'number',
       enum: [1, 2, 3]
     });
-    const validate = prm1.validator();
-    assert.strictEqual(validate(1), 1);
-    assert.strictEqual(validate(2), 2);
+    const validate = prm1.validator({throwOnError: true});
+    assert.deepStrictEqual(validate(1), {valid: true, value: 1});
+    assert.deepStrictEqual(validate(2), {valid: true, value: 2});
     assert.throws(() => validate('4'), /Value must be a one of enumerated value/);
     assert.throws(() => validate(4), /Value must be a one of enumerated value/);
   });
@@ -73,7 +76,7 @@ describe('NumberType', function() {
       type: 'number',
       minimum: 5.5
     });
-    const validate = prm1.validator();
+    const validate = prm1.validator({throwOnError: true});
     validate(5.5);
     assert.throws(() => validate(4),
         /Minimum accepted value is 5.5, actual 4/);
@@ -85,7 +88,7 @@ describe('NumberType', function() {
       type: 'number',
       maximum: 5.5
     });
-    const validate = prm1.validator();
+    const validate = prm1.validator({throwOnError: true});
     validate(5.5);
     assert.throws(() => validate(6),
         /Maximum accepted value is 5.5, actual 6/);
@@ -97,7 +100,7 @@ describe('NumberType', function() {
       type: 'number',
       multipleOf: 0.1
     });
-    const validate = prm1.validator();
+    const validate = prm1.validator({throwOnError: true});
     validate(1.1);
     assert.throws(() => validate(1.11),
         / Numeric value must be multiple of/);
@@ -109,7 +112,7 @@ describe('NumberType', function() {
       type: 'number',
       format: 'int8'
     });
-    const validate = prm1.validator();
+    const validate = prm1.validator({throwOnError: true});
     validate(-128);
     validate(127);
     assert.throws(() => validate(123.4),
@@ -126,7 +129,7 @@ describe('NumberType', function() {
       type: 'number',
       format: 'uint8'
     });
-    const validate = prm1.validator();
+    const validate = prm1.validator({throwOnError: true});
     validate(0);
     validate(255);
     assert.throws(() => validate(123.4),
@@ -143,7 +146,7 @@ describe('NumberType', function() {
       type: 'number',
       format: 'int16'
     });
-    const validate = prm1.validator();
+    const validate = prm1.validator({throwOnError: true});
     validate(-32768);
     validate(32767);
     assert.throws(() => validate(123.4),
@@ -160,7 +163,7 @@ describe('NumberType', function() {
       type: 'number',
       format: 'uint16'
     });
-    const validate = prm1.validator();
+    const validate = prm1.validator({throwOnError: true});
     validate(0);
     validate(65535);
     assert.throws(() => validate(123.4),
@@ -177,7 +180,7 @@ describe('NumberType', function() {
       type: 'number',
       format: 'int'
     });
-    const validate = prm1.validator();
+    const validate = prm1.validator({throwOnError: true});
     validate(-9007199254740991);
     validate(9007199254740991);
     assert.throws(() => validate(123.4),
@@ -194,7 +197,7 @@ describe('NumberType', function() {
       type: 'number',
       format: 'int32'
     });
-    const validate = prm1.validator();
+    const validate = prm1.validator({throwOnError: true});
     validate(-2147483648);
     validate(2147483647);
     assert.throws(() => validate(123.4),
@@ -211,7 +214,7 @@ describe('NumberType', function() {
       type: 'number',
       format: 'uint32'
     });
-    const validate = prm1.validator();
+    const validate = prm1.validator({throwOnError: true});
     validate(0);
     validate(4294967295);
     assert.throws(() => validate(123.4),
@@ -228,7 +231,7 @@ describe('NumberType', function() {
       type: 'number',
       format: 'uint64'
     });
-    const validate = prm1.validator();
+    const validate = prm1.validator({throwOnError: true});
     validate(0);
     assert.throws(() => validate(123.4),
         /it is not an integer/);

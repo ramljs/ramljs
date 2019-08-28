@@ -22,7 +22,7 @@ describe('NilType', function() {
       name: 'prm1',
       type: 'nil'
     });
-    const validate = prm1.validator();
+    const validate = prm1.validator({throwOnError: true});
     validate(null);
     validate();
     assert.throws(() => validate(0), /Value must be null/);
@@ -35,7 +35,7 @@ describe('NilType', function() {
       type: 'nil'
     });
     const validate = prm1.validator({coerceTypes: true});
-    assert.strictEqual(validate(), null);
+    assert.deepStrictEqual(validate(), {valid: true, value: null});
   });
 
   it('should always coerce default value to null', function() {
@@ -45,7 +45,7 @@ describe('NilType', function() {
       default: 1
     });
     const validate = prm1.validator({coerceTypes: true});
-    assert.strictEqual(validate(), null);
+    assert.deepStrictEqual(validate(), {valid: true, value: null});
   });
 
 });

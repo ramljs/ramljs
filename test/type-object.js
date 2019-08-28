@@ -3,8 +3,8 @@ const assert = require('assert');
 const {TypeLibrary} = require('../lib/types/TypeLibrary');
 
 describe('ObjectType', function() {
-  return;
-  let library;
+
+  const library = new TypeLibrary();
   const obj1 = {a: 1, b: '2', c: 'c', d: [1, '2', 3.3], e: 1};
   const val1 = {a: '1', b: 2, c: 'c', d: [1, '2', 3.3], e: true};
   const properties1 = {
@@ -15,30 +15,17 @@ describe('ObjectType', function() {
     e: 'boolean'
   };
 
-  beforeEach(function() {
-    library = new TypeLibrary();
-  });
-
-  it('should validate compatible values', function() {
+  it('should apply type check', function() {
     const prm1 = library.createType({
       name: 'prm1',
       type: 'object'
     });
-    const validate = prm1.validator();
-    assert.strictEqual(validate(obj1), obj1);
+    const validate = prm1.validator({throwOnError: true});
+    assert.deepStrictEqual(validate(obj1), {valid: true, value: obj1});
+    assert.strictEqual(validate(obj1).value, obj1);
     assert.throws(() => validate(''), /Value must be an object/);
     assert.throws(() => validate(false), /Value must be an object/);
     assert.throws(() => validate([]), /Value must be an object/);
-  });
-
-  it('should allow additional properties if additionalProperties=true', function() {
-    const typ1 = library.createType({
-      name: 'typ1',
-      type: 'object',
-      properties: properties1
-    });
-    const validate = typ1.validator();
-    assert(validate({...obj1, f: 'f'}));
   });
 
   it('should not allow additional properties if additionalProperties=false', function() {
@@ -48,11 +35,21 @@ describe('ObjectType', function() {
       properties: properties1,
       additionalProperties: false
     });
-    const validate = typ1.validator();
+    const validate = typ1.validator({throwOnError: true});
     assert.throws(() =>
             validate({...obj1, f: 'f'}),
         /Object type does not allow additional properties/
     );
+  });
+
+  it('should allow additional properties if additionalProperties=true', function() {
+    const typ1 = library.createType({
+      name: 'typ1',
+      type: 'object',
+      properties: properties1
+    });
+    const validate = typ1.validator({throwOnError: true});
+    validate({...obj1, f: 'f'});
   });
 
   it('should validate minProperties', function() {
@@ -61,7 +58,7 @@ describe('ObjectType', function() {
       type: 'object',
       minProperties: 2
     });
-    const validate = typ1.validator();
+    const validate = typ1.validator({throwOnError: true});
     assert.throws(() => validate(validate({a: 1})),
         /Minimum accepted properties 2, actual 1/);
   });
@@ -72,14 +69,13 @@ describe('ObjectType', function() {
       type: 'object',
       maxProperties: 2
     });
-    const validate = typ1.validator();
+    const validate = typ1.validator({throwOnError: true});
     assert.throws(() => validate(validate({a: 1, b: 2, c: 3})),
         /Maximum accepted properties 2, actual 3/);
   });
 
-
   it('should check discriminator', function() {
-    library.addType(...[
+    library.addTypes([
       {
         name: 'Person',
         type: 'object',
@@ -111,123 +107,14 @@ describe('ObjectType', function() {
       name: 'typ1',
       type: 'Employee'
     });
-    const validate = typ1.validator({coerceTypes: true});
+    const validate = typ1.validator({throwOnError: true});
     validate({kind: 'employee', name: 'name'});
-    assert.throws(() => validate({kind: 'user', name: 'name'}),
+    assert.throws(() =>
+            validate({kind: 'user', name: 'name'}
+            ),
         /Object`s discriminator property \(kind\) does not match to "employee"/);
     assert.throws(() => validate({name: 'name'}),
         /Object`s discriminator property \(kind\) does not match to "employee"/);
-  });
-
-});
-
-  return;
-  describe('validation', function() {
-
-    it('should check required', function() {
-      const typ1 = library.createType({
-        name: 'typ1',
-        type: 'object',
-        required: true
-      });
-
-      const validate = typ1.validator();
-      assert.throws(() => validate(), /Value required/);
-      assert.throws(() => validate(null), /Value required/);
-    });
-return;
-    it('should not check required if default value assigned', function() {
-      const typ1 = library.createType({
-        name: 'typ1',
-        type: 'object',
-        required: true,
-        default: {}
-      });
-
-      const validate = typ1.validator();
-      validate();
-      validate(null);
-    });
-
-    it('should validate object', function() {
-      const typ1 = library.createType({
-        name: 'typ1',
-        type: 'object'
-      });
-      const validate = typ1.validator();
-      validate({});
-      validate({a: 1});
-    });
-
-    it('should validate object properties', function() {
-      const typ1 = library.createType({
-        name: 'typ1',
-        type: 'object',
-        properties: {
-          a: 'number'
-        }
-      });
-      const validate = typ1.validator({strictTypes: true});
-      validate({a: 1});
-      assert.throws(() => validate({a: '1'}), /Value must be a number/);
-    });
-
-    it('should throw error for non-object', function() {
-      const typ1 = library.createType({
-        name: 'typ1',
-        type: 'object'
-      });
-      const validate = typ1.validator();
-      assert.throws(() => validate(0), /Value must be an object/);
-      assert.throws(() => validate(''), /Value must be an object/);
-      assert.throws(() => validate(true), /Value must be an object/);
-      assert.throws(() => validate([]), /Value must be an object/);
-    });
-
-
-
-
-
-  describe('coercion', function() {
-    it('should coerce value to JSON type', function() {
-      const typ1 = library.createType({
-        name: 'typ1',
-        type: 'object'
-      });
-      const validate = typ1.validator({coerceTypes: true});
-      assert.deepStrictEqual(validate({}), {});
-      assert.strictEqual(validate(obj1), obj1);
-    });
-
-    it('should coerce default value to JSON type', function() {
-      const typ1 = library.createType({
-        name: 'typ1',
-        type: 'object',
-        default: obj1
-      });
-      const validate = typ1.validator({coerceTypes: true});
-      assert.deepStrictEqual(validate(), obj1);
-    });
-
-    it('should coerce value to JS type', function() {
-      const typ1 = library.createType({
-        name: 'typ1',
-        type: 'object'
-      });
-      const validate = typ1.validator({coerceJSTypes: true});
-      assert.deepStrictEqual(validate(obj1), obj1);
-    });
-
-    it('should coerce default value to JS type', function() {
-      const typ1 = library.createType({
-        name: 'typ1',
-        type: 'object',
-        default: obj1
-      });
-      const validate = typ1.validator({coerceJSTypes: true});
-      assert.deepStrictEqual(validate(), obj1);
-    });
-
   });
 
 });

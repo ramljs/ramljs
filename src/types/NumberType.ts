@@ -1,10 +1,9 @@
 import AnyType, {
     IFunctionData,
-    IValidateOptions,
-    IValidateRules,
+    IValidatorGenerateOptions,
 } from './AnyType';
-import * as spec10 from "../spec10";
-import {TypeLibrary} from "./TypeLibrary";
+import * as spec10 from '../spec10';
+import {TypeLibrary} from './TypeLibrary';
 
 const IntegerTypes = ['int64', 'bigint', 'int32', 'int', 'int16', 'int8',
     'uint64', 'uint32', 'uint16', 'uint8'];
@@ -45,7 +44,7 @@ export default class NumberType extends AnyType {
         super(library, decl);
         BuiltinFacets.forEach(n => {
             if (decl[n] !== undefined)
-                this[n] = decl[n];
+                this.set(n, decl[n]);
         });
     }
 
@@ -57,71 +56,51 @@ export default class NumberType extends AnyType {
         return 'scalar';
     }
 
-    get enum(): number[] {
-        return this.get('enum');
-    }
-
-    set enum(v: number[]) {
-        this.set('enum', v);
-    }
-
-    get minimum(): number {
-        return this.get('minimum');
-    }
-
-    set minimum(v: number) {
-        this.set('minimum', v);
-    }
-
-    get maximum(): number {
-        return this.get('maximum');
-    }
-
-    set maximum(v: number) {
-        this.set('maximum', v);
-    }
-
-    get format(): string {
-        return this.get('format');
-    }
-
-    set format(v: string) {
-        this.set('format', v);
-    }
-
-    get multipleOf(): string {
-        return this.values.format;
-    }
-
-    set multipleOf(v: string) {
-        this.set('multipleOf', v);
-    }
-
     hasFacet(n: string): boolean {
         return BuiltinFacets.includes(n) || super.hasFacet(n);
     }
 
-    protected _generateValidateBody(options: IValidateOptions, rules: IValidateRules = {}): IFunctionData {
-        const data = super._generateValidateBody(options, rules);
-        const numRules = rules.number || {};
+    mergeOnto(target: AnyType) {
+        if (target.attributes.format && this.attributes.format !== target.attributes.format)
+            throw new Error('Can\'t merge different number formats');
+        target.attributes.format = this.attributes.format;
+
+        if (this.attributes.enum) {
+            target.attributes.enum = target.attributes.enum || [];
+            target.attributes.enum.push(...this.attributes.enum);
+        }
+        if (this.attributes.minimum != null) {
+            target.attributes.minimum = target.attributes.minimum != null ?
+                Math.min(target.attributes.minimum, this.attributes.minimum) :
+                this.attributes.minimum;
+        }
+        if (this.attributes.maximum != null) {
+            target.attributes.maximum = target.attributes.maximum != null ?
+                Math.max(target.attributes.maximum, this.attributes.maximum) :
+                this.attributes.maximum;
+        }
+        if (this.attributes.multipleOf != null) {
+            target.attributes.multipleOf = target.attributes.multipleOf != null ?
+                Math.min(target.attributes.multipleOf, this.attributes.multipleOf) :
+                this.attributes.multipleOf;
+        }
+    }
+
+
+    protected _generateValidationCode(options: IValidatorGenerateOptions): IFunctionData {
+        const data = super._generateValidationCode(options);
         const {strictTypes} = options;
         const coerce = options.coerceTypes || options.coerceJSTypes;
-        const enums = !numRules.noEnumCheck && this.get('enum');
+        const enums = this.attributes.enum;
         if (enums)
             data.variables.enums = new Set(enums);
 
-        const format = !numRules.noFormatCheck && this.get('format');
-        let minimum;
-        let maximum;
-        if (!numRules.noMinimumCheck) {
-            minimum = this.get('minimum');
-            minimum = minimum != null ? minimum : MinValues[format];
-        }
-        if (!numRules.noMaximumCheck) {
-            maximum = !numRules.noMaximumCheck && this.get('maximum');
-            maximum = maximum != null ? maximum : MaxValues[format];
-        }
-        const multipleOf = !numRules.noMultipleOf && this.get('multipleOf');
+        const format = this.attributes.format;
+        let minimum = this.attributes.minimum;
+        let maximum = this.attributes.maximum;
+        minimum = minimum != null ? minimum : MinValues[format];
+        maximum = maximum != null ? maximum : MaxValues[format];
+        const multipleOf = this.attributes.multipleOf;
         const bigFormat = ['bigint', 'int64', 'uint64', 'long'].includes(format);
         const intFormat = IntegerTypes.includes(format);
 
@@ -131,14 +110,13 @@ export default class NumberType extends AnyType {
                 (intFormat ? 'integer' : 'number') +
                 ' formatted string');
 
-        if (!rules.noTypeCheck) {
-            data.code += `
+        data.code += `
     if (!((typeof value === 'number' || typeof value === 'bigint')`;
-            if (!strictTypes)
-                data.code += ` || (typeof value === 'string' && value)`;
-            data.code += `)
+        if (!strictTypes)
+            data.code += ` || (typeof value === 'string' && value)`;
+        data.code += `)
     ) {
-        log({
+        error({
             message: errorMsg1,
             errorType: 'TypeError',
             path
@@ -146,14 +124,13 @@ export default class NumberType extends AnyType {
         return;
     }            
 `;
-        }
 
         data.code += `
     let n;
     try {
         n = ${bigFormat ? 'BigInt(value)' : 'Number(value)'};
     } catch (e) {
-        log({
+        error({
             message: e.message,
             errorType: 'TypeError',
             path
@@ -161,12 +138,11 @@ export default class NumberType extends AnyType {
     }
 
     if (!(typeof n === 'bigint' || !isNaN(n))) {
-        log({
-                message: errorMsg1,
-                errorType: 'TypeError',
-                path
-            }
-        );
+        error({
+            message: errorMsg1,
+            errorType: 'TypeError',
+            path
+        });
         return;
     }
 `;
@@ -174,12 +150,11 @@ export default class NumberType extends AnyType {
         if (intFormat)
             data.code += `
     if (typeof n === 'number' && (n - Math.floor(n) > 0)) {
-        log({
-                message: errorMsg1,
-                errorType: 'TypeError',
-                path
-            }
-        );
+        error({
+            message: errorMsg1,
+            errorType: 'TypeError',
+            path
+        });
         return;
     }
 `;
@@ -187,7 +162,7 @@ export default class NumberType extends AnyType {
         if (enums)
             data.code += `
     if (!enums.has(n)) {
-        log({
+        error({
             message: 'Value must be a one of enumerated value',
             errorType: 'TypeError',
             path
@@ -202,12 +177,11 @@ export default class NumberType extends AnyType {
         n / BigInt(${multipleOf}) * BigInt(${multipleOf}) :
         Math.trunc(n / ${multipleOf}) * ${multipleOf};
     if (n !== c) {
-        log({
-                message: 'Numeric value must be multiple of ${multipleOf}',
-                errorType: 'TypeError',
-                path
-            }
-        );
+        error({
+            message: 'Numeric value must be multiple of ${multipleOf}',
+            errorType: 'TypeError',
+            path
+        });
         return;
     }
 `;
@@ -215,14 +189,13 @@ export default class NumberType extends AnyType {
         if (minimum != null)
             data.code += `
     if (n < ${minimum}) {
-        log({
-                message: 'Minimum accepted value is ${minimum}, actual ' + n,
-                errorType: 'range-error',
-                path,
-                min: ${minimum}${maximum ? maximum : ', max: ' + maximum},
-                actual: n
-            }
-        );
+        error({
+            message: 'Minimum accepted value is ${minimum}, actual ' + n,
+            errorType: 'range-error',
+            path,
+            min: ${minimum}${maximum ? ', max: ' + maximum : ''},
+            actual: n
+        });
         return;
     }
 `;
@@ -230,14 +203,13 @@ export default class NumberType extends AnyType {
         if (maximum)
             data.code += `
     if (n > ${maximum}) {
-        log({
-                message: 'Maximum accepted value is ${maximum}, actual ' + n,
-                errorType: 'range-error',
-                path,
-                ${minimum ? 'min: ' + minimum + ', ' : ''}max: ${maximum},
-                actual: n
-            }
-        );
+        error({
+            message: 'Maximum accepted value is ${maximum}, actual ' + n,
+            errorType: 'range-error',
+            path,
+            ${minimum ? 'min: ' + minimum + ', ' : ''}max: ${maximum},
+            actual: n
+        });
         return;
     }
 `;

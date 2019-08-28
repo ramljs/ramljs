@@ -32,7 +32,7 @@ export class ApiDoc {
             this.version = spec.version;
             this.baseUri = spec.baseUri;
             if (spec.types)
-                this.types.addType(...doc.specification.types);
+                this.types.addTypes(doc.specification.types);
             if (spec.resources) {
                 for (const res of spec.resources)
                     this.resources[res.relativeUri] = new ApiResource(this, res);

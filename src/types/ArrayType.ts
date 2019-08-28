@@ -1,13 +1,27 @@
-import AnyType, {InternalValidateFunction, IValidateOptions, LogFunction} from './AnyType';
-import * as spec10 from "../spec10";
-import UnionType from './UnionType';
+import AnyType, {
+    IValidatorGenerateOptions,
+    IFunctionData
+} from './AnyType';
+import * as spec10 from '../spec10';
+import {TypeLibrary} from "./TypeLibrary";
+
+const BuiltinFacets = ['uniqueItems', 'minItems', 'maxItems'];
 
 export default class ArrayType extends AnyType {
 
-    public uniqueItems?: boolean;
-    public minItems?: number = 0;
-    public maxItems?: number = 2147483647;
-    private items?: AnyType;
+    public items?: AnyType;
+
+    constructor(library?: TypeLibrary, decl?: spec10.ArrayTypeDeclaration) {
+        super(library, decl);
+        BuiltinFacets.forEach(n => {
+            if (decl[n] !== undefined)
+                this.set(n, decl[n]);
+        });
+        if (decl.items) {
+            this.items = library.getType(
+                Array.isArray(decl.items) ? decl.items[0] : decl.items);
+        }
+    }
 
     get baseType(): string {
         return 'array';
@@ -17,91 +31,128 @@ export default class ArrayType extends AnyType {
         return 'array';
     }
 
-    set(src: ArrayType | spec10.ArrayTypeDeclaration) {
-        super.set(src);
-        this._copyProperties(src, ['uniqueItems', 'minItems', 'maxItems']);
-        if (src instanceof ArrayType)
-            this.items = src.items;
-        else if (Array.isArray(src.items)) {
-            this.items = new UnionType(this.library, this.name);
-            // @ts-ignore
-            this.items.set({
-                anyOf: src.items
+    hasFacet(n: string): boolean {
+        return BuiltinFacets.includes(n) || super.hasFacet(n);
+    }
+
+    clone(): ArrayType {
+        const t = super.clone() as ArrayType;
+        t.items = this.items.clone();
+        return t;
+    }
+
+    mergeOnto(target: ArrayType, overwrite?: boolean) {
+        if (this.attributes.minItems != null) {
+            target.attributes.minItems = target.attributes.minItems != null ?
+                Math.min(target.attributes.minItems, this.attributes.minItems) :
+                this.attributes.minItems;
+        }
+        if (this.attributes.maxItems != null) {
+            target.attributes.maxItems = target.attributes.maxItems != null ?
+                Math.max(target.attributes.maxItems, this.attributes.maxItems) :
+                this.attributes.maxItems;
+        }
+        if (overwrite) {
+            target.items = this.items.clone();
+            BuiltinFacets.forEach(n => {
+                if (this.attributes[n] !== undefined)
+                    target.attributes[n] = this.attributes[n];
             });
         }
     }
 
-    hasObjectType() {
-        return this.items &&
-            (this.items.baseType === 'object' ||
-                (this.items.baseType === 'union' &&
-                    // @ts-ignore
-                    this.items.hasObjectType())
-            );
-    }
+    protected _generateValidationCode(options: IValidatorGenerateOptions): IFunctionData {
+        const data = super._generateValidationCode(options);
 
-    protected _generateValidator(options: IValidateOptions): InternalValidateFunction {
-        const superValidate = super._generateValidator(options);
-        const {uniqueItems, minItems, maxItems, items} = this;
+        const minItems = this.attributes.minItems || 0;
+        const maxItems = this.attributes.maxItems || 0;
         const {strictTypes} = options;
-        // @ts-ignore
-        const itemsValidator = items && items._generateValidator(options);
+        const maxErrors = options.maxArrayErrors;
+        const uniqueItems = this.attributes.uniqueItems;
+        const itemsValidator = data.variables.itemsValidator =
+            // @ts-ignore
+            this.items && this.items._generateValidateFunction(options);
 
-        return (value: any, path: string, log?: LogFunction) => {
-            value = superValidate(value, path, log);
-            if (value == null)
-                return value;
+        if (strictTypes)
+            data.code += `
+    if (!Array.isArray(value)) {
+        error({
+            message: 'Value must be an array',
+            errorType: 'TypeError',
+            path
+        });
+        return;
+    }`;
+        data.code += `
+    const arr = Array.isArray(value) ? value : [value];`;
 
-            if (strictTypes && !Array.isArray(value)) {
-                log({
-                        message: 'Value must be an array',
-                        errorType: 'TypeError',
-                        path
-                    }
-                );
-                return;
-            }
+        if (this.attributes.minItems)
+            data.code += `
+    if (arr.length < ${minItems}) {
+        error({
+            message: 'Minimum accepted array length is ${minItems}, actual ' + arr.length,
+            errorType: 'RangeError',
+            path,                
+            min: ${minItems}${maxItems ? ', max: ' + maxItems : ''},                
+            actual: arr.length
+        });
+        return;
+    }`;
 
-            if (!Array.isArray(value)) value = [value];
-            let errLen = 0;
+        if (maxItems) {
+            data.code += `
+    if (arr.length > ${maxItems}) {
+        error({
+            message: 'Maximum accepted array length is ${maxItems}, actual ' + arr.length,
+            errorType: 'RangeError',
+            path,
+            ${minItems ? 'min: ' + minItems + ', ' : ''}max: ${maxItems},               
+            actual: arr.length
+        });
+        return;
+    }`;
+        }
 
-            if (itemsValidator) {
-                const itemsLen = value.length;
-                const resultArray = [];
-                for (let i = 0; i < itemsLen; i++) {
-                    const v = itemsValidator(value[i], path + '[' + i + ']', log);
-                    if (v === undefined)
-                        return;
-                    if (!uniqueItems || !resultArray.includes(v))
-                        resultArray.push(v);
-                }
-                value = resultArray;
-            }
+        const forIterator = itemsValidator || uniqueItems;
 
-            if (minItems && value.length < minItems) {
-                errLen++;
-                log({
-                        message: `Minimum accepted array length is ${minItems}, actual ${value.length}`,
-                        errorType: 'range-error',
-                        path,
-                        range: [minItems, maxItems],
-                        actual: value.length
-                    }
-                );
-            }
-            if (maxItems && value.length > maxItems) {
-                errLen++;
-                log({
-                        message: `Maximum accepted array length is ${maxItems}, actual ${value.length}`,
-                        errorType: 'range-error',
-                        path,
-                        range: [minItems, maxItems],
-                        actual: value.length
-                    }
-                );
-            }
-            return !errLen ? value : undefined;
-        };
+        if (forIterator) {
+            data.code += `    
+    const itemsLen = arr.length;
+    ${itemsValidator && options.coerceTypes ? `
+    let errorCount = 0;
+    const resultArray = [];
+    const lookupArray = resultArray;` : `
+    const lookupArray = arr;`}
+    
+    for (let i = 0; i < itemsLen; i++) {
+      ${itemsValidator ? `
+        const v = itemsValidator(arr[i], path + '[' + i + ']', error);
+        if (v === undefined) {
+          ${maxErrors > 1 ? 'if (++errorCount >= maxErrors) return;' : 'return;'}
+        }
+      ` : 'const v = arr[i];'}
+    `;
+
+            if (uniqueItems)
+                data.code += `
+        if (lookupArray.indexOf(v, i+1) >= 0) {
+            error({
+                message: 'Unique array contains non unique items (' + arr[i] + ')',
+                errorType: 'RangeError',
+                path:  path + '[' + i + ']'                                  
+            });
+            return;
+        }`;
+            data.code += `
+        ${itemsValidator && options.coerceTypes ? 'resultArray.push(v);' : ''}
+    }`;
+        }
+
+        if (options.coerceTypes)
+            data.code += `            
+    ${itemsValidator ? 'value = resultArray;' : 'value = arr'}`;
+
+        return data;
     }
 
 }

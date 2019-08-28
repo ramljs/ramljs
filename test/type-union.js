@@ -99,7 +99,7 @@ describe('UnionType', function() {
     });
 
     it('should coerce with exact matching', function() {
-      library.addType(
+      library.addTypes([
           {
             name: 'Person',
             discriminator: 'kind',
@@ -123,7 +123,7 @@ describe('UnionType', function() {
             properties: {
               userId: 'string'
             }
-          });
+          }]);
 
       const typ1 = library.createType({
         name: 'typ1',
@@ -144,7 +144,7 @@ describe('UnionType', function() {
   });
 
   it('should coerce with seamless matching', function() {
-    library.addType(
+    library.addTypes([
         {
           name: 'Person',
           additionalProperties: false,
@@ -168,7 +168,7 @@ describe('UnionType', function() {
             id: 'number',
             userId: 'string'
           }
-        });
+        }]);
 
     const typ1 = library.createType({
       name: 'typ1',

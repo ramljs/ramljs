@@ -1,6 +1,6 @@
 import NumberType from './NumberType';
-import {TypeLibrary} from "./TypeLibrary";
-import * as spec10 from "../spec10";
+import {TypeLibrary} from './TypeLibrary';
+import * as spec10 from '../spec10';
 
 export default class IntegerType extends NumberType {
 
@@ -19,14 +19,6 @@ export default class IntegerType extends NumberType {
 
     get baseType(): string {
         return 'integer';
-    }
-
-    get format() {
-        return 'int';
-    }
-
-    set format(v) {
-        this.set('format', 'int');
     }
 
 }

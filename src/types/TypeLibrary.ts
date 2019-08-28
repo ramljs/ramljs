@@ -1,7 +1,7 @@
 /* tslint:disable:object-literal-key-quotes */
 import AnyType from './AnyType';
 
-import * as spec10 from "../spec10";
+import * as spec10 from '../spec10';
 import ArrayType from './ArrayType';
 import BooleanType from './BooleanType';
 import DateOnlyType from './DateOnlyType';
@@ -25,7 +25,15 @@ export class TypeLibrary {
         this.types = {};
     }
 
-    addType(...declaration: spec10.TypeDeclaration[]) {
+    addType(decl: spec10.TypeDeclaration) {
+        if (this.types[decl.name])
+            throw new Error(`${decl.name} already defined in library`);
+        const t = this.createType(decl);
+        this.types[decl.name] = t;
+        return t;
+    }
+
+    addTypes(declaration: spec10.TypeDeclaration[]) {
         const orgGetType = this.getType;
         const creating = {};
         try {
@@ -73,7 +81,7 @@ export class TypeLibrary {
             (Array.isArray(decl.type) ? decl.type[0] : decl.type) :
             // @ts-ignore
             (decl.properties ? 'object' : 'string');
-        const base = this.getType(t);
+        const base = this.getType(this.getType(t).storedType);
         const Clazz = Object.getPrototypeOf(base).constructor;
         return new Clazz(this, decl);
     }
