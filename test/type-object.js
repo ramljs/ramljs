@@ -42,6 +42,21 @@ describe('ObjectType', function() {
     );
   });
 
+  it('should remove additional properties if removeAdditional=true', function() {
+    const typ1 = library.createType({
+      name: 'typ1',
+      type: 'object',
+      properties: properties1
+    });
+    const validate = typ1.validator({
+      throwOnError: true,
+      removeAdditional: true
+    });
+    assert.deepStrictEqual(
+        validate({...obj1, f: 'f'}).value,
+        obj1);
+  });
+
   it('should allow additional properties if additionalProperties=true', function() {
     const typ1 = library.createType({
       name: 'typ1',
@@ -74,7 +89,25 @@ describe('ObjectType', function() {
         /Maximum accepted properties 2, actual 3/);
   });
 
-  it('should check discriminator', function() {
+  it('should validate properties', function() {
+    const typ1 = library.createType({
+      name: 'typ1',
+      properties: {
+        'id': {type: 'string', required: true},
+        'name': 'string'
+      }
+    });
+    const validate = typ1.validator({
+      throwOnError: true,
+      removeAdditional: true
+    });
+    assert.throws(() =>
+            validate({name: 'name'}),
+        /Value required/);
+
+  });
+
+  it('should find right object in union using discriminator', function() {
     library.addTypes([
       {
         name: 'Person',
@@ -105,16 +138,79 @@ describe('ObjectType', function() {
 
     const typ1 = library.createType({
       name: 'typ1',
-      type: 'Employee'
+      type: 'Employee',
+      additionalProperties: false
     });
-    const validate = typ1.validator({throwOnError: true});
-    validate({kind: 'employee', name: 'name'});
-    assert.throws(() =>
-            validate({kind: 'user', name: 'name'}
-            ),
+    const validate = typ1.validator({
+      throwOnError: true
+    });
+    assert.throws(() => validate({kind: 'user', name: 'name'}),
         /Object`s discriminator property \(kind\) does not match to "employee"/);
     assert.throws(() => validate({name: 'name'}),
         /Object`s discriminator property \(kind\) does not match to "employee"/);
+    assert.deepStrictEqual(validate({
+          kind: 'employee',
+          name: 'name',
+          employeeId: 1
+        }).value,
+        {kind: 'employee', name: 'name', employeeId: 1});
+  });
+
+  it('should find right object in union trying to match', function() {
+    const library = new TypeLibrary();
+    library.addTypes([
+      {
+        name: 'Person',
+        type: 'object',
+        properties: {
+          name: 'string',
+          kind: 'string'
+        }
+      },
+      {
+        name: 'Employee',
+        type: 'Person',
+        properties: {
+          employeeId: 'string'
+        }
+      },
+      {
+        name: 'User',
+        type: 'Person',
+        properties: {
+          userId: 'string'
+        }
+      }
+    ]);
+
+    const typ1 = library.createType({
+      name: 'typ1',
+      type: 'union',
+      anyOf: ['Employee', 'User'],
+      additionalProperties: false
+    });
+    const validate = typ1.validator({
+      throwOnError: true,
+      removeAdditional: true
+    });
+
+    assert.deepStrictEqual(
+        validate({
+          kind: 'employee',
+          name: 'name',
+          employeeId: 1,
+          f: 1
+        }).value,
+        {kind: 'employee', name: 'name', employeeId: 1});
+
+    assert.deepStrictEqual(
+        validate({
+          kind: 'employee',
+          name: 'name',
+          userId: 1,
+          f: 1
+        }).value,
+        {kind: 'employee', name: 'name', userId: 1});
   });
 
 });

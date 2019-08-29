@@ -28,8 +28,11 @@ export default class UnionType extends AnyType {
         return (this.anyOf && this.anyOf.length && this.anyOf[0].storedType) || 'union';
     }
 
-    protected flatten(): AnyType[] {
-        return this.anyOf;
+    flatten(): AnyType[] {
+        return this.anyOf.reduce((a, t) => {
+            a.push(...t.flatten());
+            return a;
+        }, []);
     }
 
 }

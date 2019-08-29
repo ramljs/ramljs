@@ -60,7 +60,7 @@ export default class NumberType extends AnyType {
         return BuiltinFacets.includes(n) || super.hasFacet(n);
     }
 
-    mergeOnto(target: AnyType) {
+    protected _mergeOnto(target: AnyType) {
         if (target.attributes.format && this.attributes.format !== target.attributes.format)
             throw new Error('Can\'t merge different number formats');
         target.attributes.format = this.attributes.format;
@@ -85,7 +85,6 @@ export default class NumberType extends AnyType {
                 this.attributes.multipleOf;
         }
     }
-
 
     protected _generateValidationCode(options: IValidatorGenerateOptions): IFunctionData {
         const data = super._generateValidationCode(options);

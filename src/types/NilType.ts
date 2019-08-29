@@ -23,7 +23,7 @@ export default class NilType extends AnyType {
 
     protected _generateValidationCode(options: IValidatorGenerateOptions): IFunctionData {
         const data = super._generateValidationCode(options);
-        data.code += `
+        data.code = '    if (value === undefined) value = null;' + data.code + `
     error({
         message: 'Value must be null',
         errorType: 'TypeError',

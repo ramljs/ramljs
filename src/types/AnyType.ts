@@ -62,7 +62,10 @@ export default class AnyType {
         if (decl.examples && decl.example)
             throw new Error('Can\'t use "example" and "examples" facets at same time');
 
-        this._definePrivate('_library', library);
+        Object.defineProperty(this, '_library', {
+            enumerable: false,
+            value: library
+        });
         this.type = [];
         if (decl.type) {
             const types = Array.isArray(decl.type) ? decl.type : [decl.type];
@@ -118,17 +121,8 @@ export default class AnyType {
             if (this.attributes[x] !== undefined)
                 t.attributes[x] = this.attributes[x];
         });
-        this.mergeOnto(t, true);
+        this._mergeOnto(t);
         return t;
-    }
-
-    mergeOnto(target: AnyType, overwrite?: boolean) {
-        this.type.forEach(t => {
-            if (!target.type.find(tt => tt.name === t.name))
-                target.type.push(t);
-        });
-        Object.assign(target.annotations, this.annotations);
-        Object.assign(target.facets, this.facets);
     }
 
     get(n: string, defaultValue?) {
@@ -164,7 +158,7 @@ export default class AnyType {
         }
     }
 
-    protected flatten(): AnyType[] {
+    flatten(): AnyType[] {
         if (!this.type.length)
             return [this];
         const combinations = [];
@@ -177,14 +171,14 @@ export default class AnyType {
                     let t2;
                     if (l < c.length - 1) {
                         t2 = typ.clone();
-                        c[l].mergeOnto(t2, i === 0);
+                        c[l]._mergeOnto(t2, i > 0);
                         iterateTypes(t2, i + 1);
                     } else {
-                        c[l].mergeOnto(typ, i === 0);
+                        c[l]._mergeOnto(typ, i > 0);
                     }
                 }
             }
-            this.mergeOnto(typ, true);
+            this._mergeOnto(typ);
             combinations.push(typ);
             typ.type = [];
             typ.attributes.name += '_' + (combinations.indexOf(typ) + 1);
@@ -195,7 +189,6 @@ export default class AnyType {
     }
 
     validator(options: IValidatorOptions = {}): ValidateFunction {
-        const defaultVal = this.attributes.default;
         const validate = this._generateValidateFunction(options);
         const throwOnError = options.throwOnError;
         return (value: any): IValidateResult => {
@@ -203,7 +196,7 @@ export default class AnyType {
             const errorFn = (e: IValidationError) => {
                 errors.push(e);
             };
-            const v = validate(value != null ? value : (defaultVal != null ? defaultVal : null), '', errorFn);
+            const v = validate(value, '', errorFn);
             const valid = v !== undefined;
             if (!valid && !errors.length) {
                 errorFn({
@@ -221,30 +214,50 @@ export default class AnyType {
         };
     }
 
+    protected _mergeOnto(target: AnyType, supplemental?: boolean) {
+        this.type.forEach(t => {
+            if (!target.type.find(tt => tt.name === t.name))
+                target.type.push(t);
+        });
+        Object.assign(target.annotations, this.annotations);
+        Object.assign(target.facets, this.facets);
+    }
+
     protected _generateValidateFunction(options: IValidatorOptions): InternalValidateFunction {
+        const defaultVal = this.attributes.default;
         const types = this.flatten();
         const functions = [];
         const isUnion = types.length > 1;
         for (const typ of types) {
             const varNames = [];
             const varValues = [];
+            if (defaultVal !== undefined) {
+                varNames.push('defaultVal');
+                varValues.push(defaultVal);
+            }
             const o = typ._generateValidationCode({...options, isUnion});
             if (o.variables)
                 for (const n of Object.keys(o.variables)) {
                     varNames.push(n);
                     varValues.push(o.variables[n]);
                 }
-            const code = `return (value, path, error) => {${o.code}\n    return value;\n}`;
+            const code = `return (value, path, error) => {
+            ${defaultVal !== undefined ? 'if (value == null) value = defaultVal;' : ''}             
+            ${o.code}
+return value;\n}`;
             const fn = new Function(...varNames, code)(...varValues);
             functions.push(fn);
         }
         if (isUnion) {
-            return (...arg) => {
+            return (value, path, error) => {
                 for (const fn of functions) {
-                    const v = fn(...arg);
+                    const v = fn(value, path, () => 0);
                     if (v !== undefined)
                         return v;
                 }
+                error({
+                    message: 'Non of ',
+                });
             };
         }
         return functions[0];
@@ -267,15 +280,8 @@ export default class AnyType {
     }
 `;
         }
-        data.code += '\n    if (value === null) return value;';
+        data.code += '\n    if (value == null) return value;';
         return data;
-    }
-
-    protected _definePrivate(n: string, v: any) {
-        Object.defineProperty(this, n, {
-            enumerable: false,
-            value: v
-        });
     }
 
 }

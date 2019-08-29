@@ -41,7 +41,7 @@ export default class StringType extends AnyType {
         return BuiltinFacets.includes(n) || super.hasFacet(n);
     }
 
-    mergeOnto(target: AnyType) {
+    protected _mergeOnto(target: AnyType) {
         if (this.attributes.pattern) {
             target.attributes.pattern = target.attributes.pattern || [];
             target.attributes.pattern.push(...this.attributes.pattern);

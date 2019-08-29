@@ -41,7 +41,7 @@ export default class ArrayType extends AnyType {
         return t;
     }
 
-    mergeOnto(target: ArrayType, overwrite?: boolean) {
+    _mergeOnto(target: ArrayType, supplemental?: boolean) {
         if (this.attributes.minItems != null) {
             target.attributes.minItems = target.attributes.minItems != null ?
                 Math.min(target.attributes.minItems, this.attributes.minItems) :
@@ -52,7 +52,7 @@ export default class ArrayType extends AnyType {
                 Math.max(target.attributes.maxItems, this.attributes.maxItems) :
                 this.attributes.maxItems;
         }
-        if (overwrite) {
+        if (!supplemental) {
             target.items = this.items.clone();
             BuiltinFacets.forEach(n => {
                 if (this.attributes[n] !== undefined)
@@ -119,7 +119,7 @@ export default class ArrayType extends AnyType {
             data.code += `    
     const itemsLen = arr.length;
     ${itemsValidator && options.coerceTypes ? `
-    let errorCount = 0;
+    let numErrors = 0;
     const resultArray = [];
     const lookupArray = resultArray;` : `
     const lookupArray = arr;`}
@@ -128,7 +128,7 @@ export default class ArrayType extends AnyType {
       ${itemsValidator ? `
         const v = itemsValidator(arr[i], path + '[' + i + ']', error);
         if (v === undefined) {
-          ${maxErrors > 1 ? 'if (++errorCount >= maxErrors) return;' : 'return;'}
+          ${maxErrors > 1 ? 'if (++numErrors >= maxErrors) return;' : 'return;'}
         }
       ` : 'const v = arr[i];'}
     `;

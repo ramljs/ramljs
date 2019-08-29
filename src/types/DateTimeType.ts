@@ -16,7 +16,7 @@ export default class DateTimeType extends DateType {
         return n === 'format' || super.hasFacet(n);
     }
 
-    mergeOnto(target: DateType, overwrite?: boolean) {
+    protected _mergeOnto(target: DateType, supplemental?: boolean) {
         if (target.attributes.format && this.attributes.format !== target.attributes.format)
             throw new Error('Can\'t merge different number formats');
         target.attributes.format = this.attributes.format;

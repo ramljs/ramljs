@@ -25,7 +25,9 @@ export default class ObjectType extends AnyType {
             }
         } else if (typeof decl.properties === 'object') {
             for (const k of Object.keys(decl.properties)) {
-                const prop = decl.properties[k] as spec10.TypeDeclaration;
+                let prop = decl.properties[k] as any;
+                if (!(typeof prop === 'object'))
+                    prop = {type: prop};
                 this.properties[k] = library.createType({
                     ...prop,
                     name: k
@@ -54,7 +56,7 @@ export default class ObjectType extends AnyType {
         return t;
     }
 
-    mergeOnto(target: ObjectType, overwrite?: boolean) {
+    protected _mergeOnto(target: ObjectType, supplemental?: boolean) {
         if (this.attributes.minProperties != null) {
             target.attributes.minProperties = target.attributes.minProperties != null ?
                 Math.min(target.attributes.minProperties, this.attributes.minProperties) :
@@ -67,8 +69,10 @@ export default class ObjectType extends AnyType {
         }
         for (const k of Object.keys(this.properties)) {
             target.properties[k] = this.properties[k].clone();
+            if (!supplemental)
+                target.properties[k].attributes.required = true;
         }
-        if (overwrite) {
+        if (!supplemental) {
             BuiltinFacets.forEach(n => {
                 if (this.attributes[n] !== undefined)
                     target.attributes[n] = this.attributes[n];
@@ -82,12 +86,13 @@ export default class ObjectType extends AnyType {
         const discriminator = data.variables.discriminator = this.attributes.discriminator;
         data.variables.discriminatorValue = this.attributes.discriminatorValue || this.name;
         const additionalProperties = data.variables.additionalProperties =
-            this.attributes.additionalProperties != null ?
-                this.attributes.additionalProperties : true;
+            !options.removeAdditional &&
+            (this.attributes.additionalProperties != null ? this.attributes.additionalProperties : true);
         const minProperties = data.variables.minProperties =
             parseInt(this.attributes.minProperties, 10) || 0;
         const maxProperties = data.variables.maxProperties =
             parseInt(this.attributes.maxProperties, 10) || 0;
+        const maxErrors = options.maxObjectErrors || 0;
 
         let ignoreRequire = options.ignoreRequire;
         const properties = data.variables.properties = this.properties;
@@ -111,11 +116,11 @@ export default class ObjectType extends AnyType {
              * If discriminator is not defined we can not know the object type.
              * So we apply a pre validation.
              */
-            if (options.isUnion && !discriminator &&
-                (options.coerceTypes || options.coerceJSTypes || options.removeAdditional)) {
+            if (options.isUnion && !discriminator) {
                 prePropertyValidators = data.variables.prePropertyValidators = {};
                 for (const k of propertyKeys) {
-                    prePropertyValidators[k] = properties[k].validator({
+                    // @ts-ignore
+                    prePropertyValidators[k] = properties[k]._generateValidateFunction({
                         ...options,
                         coerceTypes: false,
                         coerceJSTypes: false,
@@ -128,7 +133,9 @@ export default class ObjectType extends AnyType {
             }
             propertyValidators = data.variables.propertyValidators = {};
             for (const k of propertyKeys) {
-                propertyValidators[k] = properties[k].validator(options);
+                const opts = maxErrors > 1 ? {...options, throwOnError: false} : options;
+                // @ts-ignore
+                propertyValidators[k] = properties[k]._generateValidateFunction(opts);
             }
         }
 
@@ -159,33 +166,20 @@ export default class ObjectType extends AnyType {
     }
 `;
 
-        if (!additionalProperties || propertyKeys.length)
+        if (!additionalProperties || minProperties || maxProperties || propertyValidators)
             data.code += `    
-    const valueKeys = Object.keys(value);
-    const valueLen = valueKeys.length;
-`;
-
-        if (!additionalProperties)
-            data.code += `    
-    if (valueKeys.some(x => !properties.hasOwnProperty(x))) {
-        error({
-            message: 'Object type does not allow additional properties',
-            errorType: 'TypeError',
-            path
-        });
-        return;
-    }
+    const valueKeys = Object.keys(value);   
 `;
 
         if (minProperties) {
             data.code += `
-    if (valueLen < minProperties) {
+    if (valueKeys.length < minProperties) {
         error({
-            message: 'Minimum accepted properties ' + minProperties + ', actual ' + valueLen,
+            message: 'Minimum accepted properties ' + minProperties + ', actual ' + valueKeys.length,
             errorType: 'range-error',
             path,
             min: ${minProperties}${maxProperties ? ', max: ' + maxProperties : ''},
-            actual: valueLen
+            actual: valueKeys.length
         });
         return;
     }
@@ -194,50 +188,90 @@ export default class ObjectType extends AnyType {
 
         if (maxProperties)
             data.code += `
-    if (valueLen > maxProperties) {
+    if (valueKeys.length > maxProperties) {
         error({
-            message: 'Maximum accepted properties ' + maxProperties +', actual ' + valueLen,
+            message: 'Maximum accepted properties ' + maxProperties +', actual ' + valueKeys.length,
             errorType: 'range-error',
             path,
             ${minProperties ? 'min: ' + minProperties + ', ' : ''}max: ${maxProperties},
-            actual: valueLen
+            actual: valueKeys.length
         });
         return;
     }
 `;
 
-        if (propertyValidators) {
+        if (prePropertyValidators) {
             data.code += `
-    // const propertyLen = ${propertyValidators.length};
-    const keysLen = valueKeys.length;
-    const result = {};
+    const preKeys = Object.keys(prePropertyValidators);  
+    for (let i = 0; i < ${propertyKeys.length}; i++) {
+        const k = preKeys[i];
+        const fn = prePropertyValidators[k];
+        const _path = path ? path + '.' + k : k;
+        let hasError;
+        const vv = fn(value[k], _path, () => {hasError: true});
+        if (hasError) return;                    
+    }            
+            `;
+        }
+
+        // Iterate over value properties than iterate over type properties
+        if (propertyValidators) {
+            const needResult = options.coerceTypes || options.removeAdditional;
+
+            data.code += `
+    let numErrors = 0;        
+    const subError = (...args) => {
+      numErrors++;
+      error(...args);
+    }                        
+    const prpVlds = Object.assign({}, propertyValidators);
+    let keysLen = valueKeys.length;
+    ${needResult ? 'const result = {};' : ''}
     for (let i = 0; i < keysLen; i++) {
         const k = valueKeys[i];
-        const propc = propertyValidators[k];
-        if (propc) {
-            const vv = propc(value[k], path + '.' + k, error);
-            if (vv === undefined && !allErrors)
-                return undefined;
-            if (vv !== undefined)
-                result[k] = vv;
-        } else if (!removeAdditional && additionalProperties) {
-            result[k] = value[k];
-        } else if (!removeAdditional) {
-            errLen++;
+        const fn = propertyValidators[k];
+        const _path = path ? path + '.' + k : k;
+        if (fn) {
+            delete prpVlds[k];
+            const vv = fn(value[k], _path, subError);
+            if (vv === undefined) {
+                ${maxErrors > 1 ? `if (numErrors >= maxErrors) return;
+                continue;` : 'return;'}
+            }                                   
+            ${needResult ? 'result[k] = vv;' : ''}                           
+        }`;
+            if (additionalProperties) {
+                if (needResult)
+                    data.code += `else result[k] = value[k];`;
+            } else if (!options.removeAdditional)
+                data.code += `else {
             error({
                     message: 'Object type does not allow additional properties',
                     errorType: 'TypeError',
-                    path: path + '.' + k
+                    path: _path
                 }
             );
-        }
+            ${maxErrors > 1 ? 'if (++numErrors >= maxErrors) return;' : ''}
+        }`;
+            data.code += `         
     }
-    value = result;
+    
+    const keys = Object.keys(prpVlds);
+    keysLen = keys.length;
+    for (let i = 0; i < keysLen; i++) {
+        const k = keys[i];
+        const fn = prpVlds[k];
+        const _path = path ? path + '.' + k : k;
+        const n = numErrors;
+        const vv = fn(value[k], _path, subError);
+        if (numErrors > n)
+          ${maxErrors > 1 ? 'if (numErrors >= maxErrors) return;' : 'return'}
+        ${needResult ? 'if (vv != undefined) result[k] = vv;' : ''}                    
+    }
+    
+    ${needResult ? 'value = result;' : ''};    
         `;
         }
-
-        if (options.coerceTypes || options.coerceJSTypes)
-            data.code += '\n    value = v;';
 
         return data;
     }
