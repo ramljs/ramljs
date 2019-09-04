@@ -1,6 +1,6 @@
 /* eslint-disable */
 const assert = require('assert');
-const {TypeLibrary} = require('../lib/types/TypeLibrary');
+const TypeLibrary = require('../lib/types/TypeLibrary');
 
 describe('StringType', function() {
 

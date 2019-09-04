@@ -1,6 +1,6 @@
 /* eslint-disable */
 const assert = require('assert');
-const {TypeLibrary} = require('../lib/types/TypeLibrary');
+const TypeLibrary = require('../lib/types/TypeLibrary');
 
 describe('ArrayType', function() {
   const library = new TypeLibrary();
@@ -117,7 +117,7 @@ describe('ArrayType', function() {
     validate([1, 2]);
     assert.throws(() =>
             validate([1, 2, 3, 3]),
-        /Unique array contains non unique items/);
+        /Unique array contains non-unique items/);
   });
 
 });

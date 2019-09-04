@@ -1,50 +1,53 @@
 const characters = require('../../../support/starwars/data/characters');
 
 module.exports = {
-
   spec: `
-        get:
-          body:
-            application/json:
-              type: Hero[]
-          queryString:
-            type: [paging,  lat-long | loc ]
-            examples:
-              first:
-                value:
-                  start: 2
-                  lat: 12
-                  long: 13
-              second:
-                value:
-                  start: 2
-                  page-size: 20
-                  location: 1,2
-              third:  # not valid
-                value:
-                  lat: 12
-                  location: 2
-                strict: false # because it's not valid    
+  get:
+    queryString:
+      # type: number
+      type: paging
+    responses:
+      200:
+        body:
+          application/json:
+            type: Hero[]                     
+  post:
+    body:
+      application/json:
+        type: Hero
   `,
 
-  methods: [
-    {
-      all: (req, res, next) => {
-        req.context.time = new Date().toISOString();
-        next();
-      }
+  get: [
+    setTime,
+    (req, res, next) => {
+      res.status(200).end(JSON.stringify({
+        requestTime: req.time,
+        characters
+      }));
+      next();
     },
-    {
-      get: (req, res, next) => {
-        res.status(200).end(JSON.stringify({
-          requestTime: req.context.time,
-          characters
-        }));
-        next();
-      },
-      all: (req, res, next) => {
-        console.log();
-      }
-    }]
+    logRequest
+  ],
+
+  post: [
+    setTime,
+    (req, res, next) => {
+      console.log(req.body);
+      res.status(200).json(req.body);
+    },
+    logRequest
+  ]
 
 };
+
+let id = 0;
+
+function setTime(req, res, next) {
+  req.time = new Date().toISOString();
+  next();
+}
+
+function logRequest(req, res, next) {
+  console.log('Request ' + req.id + ' completed');
+  next();
+}

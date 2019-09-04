@@ -1,6 +1,6 @@
 /* eslint-disable */
 const assert = require('assert');
-const {TypeLibrary} = require('../lib/types/TypeLibrary');
+const TypeLibrary = require('../lib/types/TypeLibrary');
 
 describe('AnyType', function() {
 
@@ -34,13 +34,6 @@ describe('AnyType', function() {
       examples: ['examples']
     });
     assert.deepStrictEqual(typ1.attributes.examples, ['examples']);
-  });
-
-  it('should check name argument in constructor', function() {
-    assert.throws(() =>
-        library.addType({
-          type: 'any'
-        }), /You must provide "decl.name" property/);
   });
 
   it('should use default value if given value is null', function() {
@@ -77,8 +70,8 @@ describe('AnyType', function() {
     assert.deepStrictEqual(validate(), {
       valid: false,
       errors: [{
-        errorType: 'ValueRequiredError',
-        message: 'Value required',
+        errorType: 'value-required',
+        message: 'Value required for typ1',
         path: ''
       }]
     });
@@ -99,15 +92,16 @@ describe('AnyType', function() {
     });
   });
 
-  it('should not types inherit from incompatible types', function() {
+  it('should not inherit from incompatible types', function() {
     const tryType = (t) => {
-      assert.throws(() => library.createType({
-        name: 'typ1',
-        type: ['boolean', t]
-      }), new RegExp('Can\'t extend boolean type from ' + t));
+      assert.throws(() =>
+          library.createType({
+            name: 'typ1',
+            type: ['boolean', t]
+          }), new RegExp('Can\'t extend boolean type from ' + t));
     };
-    ['any', 'number', 'integer', 'string', 'array', 'object', 'datetime',
-      'union']
+    ['any', 'number', 'integer', 'string', 'array',
+      'object', 'datetime', 'union']
         .forEach(tryType);
   });
 

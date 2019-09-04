@@ -1,6 +1,6 @@
 /* eslint-disable */
 const assert = require('assert');
-const {TypeLibrary} = require('../lib/types/TypeLibrary');
+const TypeLibrary = require('../lib/types/TypeLibrary');
 
 describe('ObjectType', function() {
 
@@ -156,28 +156,22 @@ describe('ObjectType', function() {
         {kind: 'employee', name: 'name', employeeId: 1});
   });
 
-  it('should find right object in union trying to match', function() {
+  it('should find right type using typeOf method', function() {
     const library = new TypeLibrary();
     library.addTypes([
       {
-        name: 'Person',
-        type: 'object',
+        name: 'Employee',
         properties: {
           name: 'string',
-          kind: 'string'
-        }
-      },
-      {
-        name: 'Employee',
-        type: 'Person',
-        properties: {
+          kind: 'string',
           employeeId: 'string'
         }
       },
       {
         name: 'User',
-        type: 'Person',
         properties: {
+          name: 'string',
+          kind: 'string',
           userId: 'string'
         }
       }
@@ -185,9 +179,15 @@ describe('ObjectType', function() {
 
     const typ1 = library.createType({
       name: 'typ1',
-      type: 'union',
-      anyOf: ['Employee', 'User'],
-      additionalProperties: false
+      type: library.createType({
+        type: 'union',
+        anyOf: ['Employee', 'User']
+      }), typeOf: (t, v) => {
+        if (t.properties.userId)
+          return !!v.userId;
+        if (t.properties.employeeId)
+          return !!v.employeeId;
+      }
     });
     const validate = typ1.validator({
       throwOnError: true,
@@ -196,21 +196,17 @@ describe('ObjectType', function() {
 
     assert.deepStrictEqual(
         validate({
-          kind: 'employee',
           name: 'name',
-          employeeId: 1,
-          f: 1
+          employeeId: 1
         }).value,
-        {kind: 'employee', name: 'name', employeeId: 1});
+        {name: 'name', employeeId: 1});
 
     assert.deepStrictEqual(
         validate({
-          kind: 'employee',
           name: 'name',
-          userId: 1,
-          f: 1
+          userId: 1
         }).value,
-        {kind: 'employee', name: 'name', userId: 1});
+        {name: 'name', userId: 1});
   });
 
 });

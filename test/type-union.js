@@ -1,6 +1,6 @@
 /* eslint-disable */
 const assert = require('assert');
-const {TypeLibrary} = require('../lib/types/TypeLibrary');
+const TypeLibrary = require('../lib/types/TypeLibrary');
 
 describe('UnionType', function() {
   return;
@@ -100,30 +100,30 @@ describe('UnionType', function() {
 
     it('should coerce with exact matching', function() {
       library.addTypes([
-          {
-            name: 'Person',
-            discriminator: 'kind',
-            properties: {
-              name: 'string',
-              kind: 'string'
-            }
-          },
-          {
-            name: 'Employee',
-            type: 'Person',
-            discriminatorValue: 'employee',
-            properties: {
-              employeeId: 'string'
-            }
-          },
-          {
-            name: 'User',
-            type: 'Person',
-            discriminatorValue: 'user',
-            properties: {
-              userId: 'string'
-            }
-          }]);
+        {
+          name: 'Person',
+          discriminator: 'kind',
+          properties: {
+            name: 'string',
+            kind: 'string'
+          }
+        },
+        {
+          name: 'Employee',
+          type: 'Person',
+          discriminatorValue: 'employee',
+          properties: {
+            employeeId: 'string'
+          }
+        },
+        {
+          name: 'User',
+          type: 'Person',
+          discriminatorValue: 'user',
+          properties: {
+            userId: 'string'
+          }
+        }]);
 
       const typ1 = library.createType({
         name: 'typ1',
@@ -145,37 +145,40 @@ describe('UnionType', function() {
 
   it('should coerce with seamless matching', function() {
     library.addTypes([
-        {
-          name: 'Person',
-          additionalProperties: false,
-          properties: {
-            name: 'string',
-            kind: 'string'
-          }
-        },
-        {
-          name: 'Employee',
-          type: 'Person',
-          properties: {
-            id: 'string',
-            employeeId: 'string'
-          }
-        },
-        {
-          name: 'User',
-          type: 'Person',
-          properties: {
-            id: 'number',
-            userId: 'string'
-          }
-        }]);
+      {
+        name: 'Person',
+        additionalProperties: false,
+        properties: {
+          name: 'string',
+          kind: 'string'
+        }
+      },
+      {
+        name: 'Employee',
+        type: 'Person',
+        properties: {
+          id: 'string',
+          employeeId: 'string'
+        }
+      },
+      {
+        name: 'User',
+        type: 'Person',
+        properties: {
+          id: 'number',
+          userId: 'string'
+        }
+      }]);
 
     const typ1 = library.createType({
       name: 'typ1',
       type: 'union',
       anyOf: ['Employee', 'User']
     });
-    const validate = typ1.validator({coerceTypes: true, removeAdditional: true});
+    const validate = typ1.validator({
+      coerceTypes: true,
+      removeAdditional: true
+    });
 
     assert.deepStrictEqual(validate({
       kind: 'user',
