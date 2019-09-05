@@ -72,7 +72,7 @@ describe('AnyType', function() {
       errors: [{
         errorType: 'value-required',
         message: 'Value required for typ1',
-        path: ''
+        path: 'typ1'
       }]
     });
   });

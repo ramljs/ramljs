@@ -1,7 +1,6 @@
 const characters = require('../../../../../support/starwars/data/characters');
 
 module.exports = {
-
   spec: `
   get:
     description: List friends of hero
@@ -11,6 +10,11 @@ module.exports = {
     body:
       application/json:
         type: Hero 
+    responses:
+      200:
+        body:
+          application/json:
+            type: Hero[]                   
   `,
 
   get: (req, res) => {

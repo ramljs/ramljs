@@ -2,38 +2,18 @@ const characters = require('../../../support/starwars/data/characters');
 
 module.exports = {
   spec: `
-  get:
-    queryString:
-      # type: number
-      type: paging
-    responses:
-      200:
-        body:
-          application/json:
-            type: Hero[]                     
-  post:
-    body:
-      application/json:
-        type: Hero
+  type: { resourceCollection: { outputResource: Hero } }
+  is: [ secured ]  
   `,
 
+  /**
+   *
+   */
   get: [
     setTime,
     (req, res, next) => {
-      res.status(200).end(JSON.stringify({
-        requestTime: req.time,
-        characters
-      }));
+      res.json(characters);
       next();
-    },
-    logRequest
-  ],
-
-  post: [
-    setTime,
-    (req, res, next) => {
-      console.log(req.body);
-      res.status(200).json(req.body);
     },
     logRequest
   ]

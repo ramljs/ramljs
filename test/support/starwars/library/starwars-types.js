@@ -8,7 +8,7 @@ annotationTypes:
 types:
 
   ID:
-    type: string
+    type: integer
     required: true
     description: Idendity
 
@@ -24,7 +24,7 @@ types:
   CharacterType:
     type: string
     description: Episodes in StarWars
-    enum: [Human, Jedi, Droid]
+    enum: [Alien, Human, Jedi, Droid]
 
   Character:
     properties:
@@ -48,7 +48,7 @@ types:
 
   PlanetResident:
     properties:
-      homePlanet:
+      homePlanet?:
         type: string
 
   Human:

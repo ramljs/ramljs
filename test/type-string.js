@@ -70,8 +70,8 @@ describe('StringType', function() {
     const validate = prm1.validator({throwOnError: true});
     assert.deepStrictEqual(validate('a'), {valid: true, value: 'a'});
     assert.deepStrictEqual(validate('b'), {valid: true, value: 'b'});
-    assert.throws(() => validate(''), /Value must be a one of enumerated value/);
-    assert.throws(() => validate('c'), /Value must be a one of enumerated value/);
+    assert.throws(() => validate(''), /Value for "prm1" must be a one of enumerated value/);
+    assert.throws(() => validate('c'), /Value for "prm1" must be a one of enumerated value/);
   });
 
   it('should validate min length', function() {

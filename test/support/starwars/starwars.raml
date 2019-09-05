@@ -24,19 +24,47 @@ securitySchemes:
       tokenCredentialsUri: https://api.foobarbaz.com/1/oauth/access_token
 
 resourceTypes:
-  postable:
+  resourceCollection:
+    usage: This resourceType should be used for any collection of items
+    description: The collection of <<outputResource>>
+    get:
+      description: Get all <<outputResource>>, optionally filtered
+      responses:
+        200:
+          body:
+            application/json:
+              type: <<outputResource>>[]
+
+  singleResource:
+    usage: This resourceType should be used for any collection of items
+    description: The <<outputResource>>
+    get:
+      description: Get single <<outputResource>>
+      responses:
+        200:
+          body:
+            application/json:
+              type: <<outputResource>>
     post:
-      queryParameters:
-        csrf:
-          type: string
+      description: Create a new <<inputResource | !singularize>>
+      body:
+        application/json:
+          type: <<inputResource>>
+      responses:
+        200:
+          body:
+            application/json:
+              type: <<outputResource>>
 
 traits:
-  traceable:
+  secured:
+    usage: Apply this to any method that needs to be secured
+    description: Some requests require authentication.
     headers:
-      X-Tracker:
-        description: A code to track API calls end to end
-        pattern: ^\w{16}$
-        example: abcdefghijklmnop
+      access_token:
+        description: Access Token
+        example: 5757gh76
+        required: true
 
 types:
   lat-long: # lat & long required; mutually exclusive with location

@@ -1,20 +1,12 @@
 const characters = require('../../../../support/starwars/data/characters');
 
 module.exports = {
-
   spec: `
   uriParameters:
     heroId:
       type: integer
-  get:
-    body:
-      application/json:
-        type: Hero
-  post:
-    is: [ traceable ]
-    body:
-      application/json:
-        type: Hero
+  type: { singleResource: { inputResource: Hero, outputResource: Hero } }
+  is: [ secured ]    
   `,
 
   /**
@@ -24,17 +16,18 @@ module.exports = {
     const {heroId} = req.params;
     const c = characters.find(x => String(x.id) === heroId);
     if (c)
-      return res.status(200).end(JSON.stringify(c));
+      return res.json(c);
     res.status(401).end('Not found');
   },
 
   /**
    *
    */
-  post: () => {},
-
-  pathSecurity: (req, scope) => {
-
+  post: (req, res) => {
+    const data = req.body;
+    data.id = req.params.heroId;
+    characters.push(data);
+    res.json(data);
   }
 
 };

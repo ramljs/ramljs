@@ -66,8 +66,8 @@ describe('NumberType', function() {
     const validate = prm1.validator({throwOnError: true});
     assert.deepStrictEqual(validate(1), {valid: true, value: 1});
     assert.deepStrictEqual(validate(2), {valid: true, value: 2});
-    assert.throws(() => validate('4'), /Value must be a one of enumerated value/);
-    assert.throws(() => validate(4), /Value must be a one of enumerated value/);
+    assert.throws(() => validate('4'), /Value for "prm1" must be a one of enumerated value/);
+    assert.throws(() => validate(4), /Value for "prm1" must be a one of enumerated value/);
   });
 
   it('should validate minimum', function() {
