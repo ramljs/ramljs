@@ -1,5 +1,5 @@
 import AnyType from './AnyType';
-import TypeLibrary from './TypeLibrary';
+import {Library} from '../spec/Library';
 import * as spec10 from '../spec10';
 
 export default class ObjectType extends AnyType {
@@ -8,6 +8,6 @@ export default class ObjectType extends AnyType {
     };
     typeOf: (t: ObjectType, value: any) => boolean;
 
-    constructor(library?: TypeLibrary, decl?: spec10.ObjectTypeDeclaration);
+    constructor(library?: Library, decl?: spec10.ObjectTypeDeclaration);
 
 }

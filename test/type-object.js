@@ -1,10 +1,10 @@
 /* eslint-disable */
 const assert = require('assert');
-const TypeLibrary = require('../lib/types/TypeLibrary');
+const {Library} = require('../lib/spec/Library');
 
 describe('ObjectType', function() {
 
-  const library = new TypeLibrary();
+  const library = new Library();
   const obj1 = {a: 1, b: '2', c: 'c', d: [1, '2', 3.3], e: 1};
   const val1 = {a: '1', b: 2, c: 'c', d: [1, '2', 3.3], e: true};
   const properties1 = {
@@ -108,7 +108,7 @@ describe('ObjectType', function() {
   });
 
   it('should find right object in union using discriminator', function() {
-    library.addTypes([
+    library.addTypes(
       {
         name: 'Person',
         type: 'object',
@@ -134,7 +134,7 @@ describe('ObjectType', function() {
           userId: 'string'
         }
       }
-    ]);
+    );
 
     const typ1 = library.createType({
       name: 'typ1',
@@ -157,8 +157,8 @@ describe('ObjectType', function() {
   });
 
   it('should find right type using typeOf method', function() {
-    const library = new TypeLibrary();
-    library.addTypes([
+    const library = new Library();
+    library.addTypes(
       {
         name: 'Employee',
         properties: {
@@ -175,7 +175,7 @@ describe('ObjectType', function() {
           userId: 'string'
         }
       }
-    ]);
+    );
 
     const typ1 = library.createType({
       name: 'typ1',

@@ -1,10 +1,10 @@
 /* eslint-disable */
 const assert = require('assert');
-const TypeLibrary = require('../lib/types/TypeLibrary');
+const {Library} = require('../lib/spec/Library');
 
 describe('AnyType', function() {
 
-  const library = new TypeLibrary();
+  const library = new Library();
 
   it('should assign default facets', function() {
     let typ1 = library.createType({

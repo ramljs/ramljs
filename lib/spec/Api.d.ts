@@ -1,5 +1,4 @@
-import TypeLibrary from '../types/TypeLibrary';
-import LibraryBase from './LibraryBase';
+import {LibraryBase} from './Library';
 import {HasResources} from './Resource';
 import {Secured} from './common';
 
@@ -14,7 +13,7 @@ export declare class Api extends LibraryBase, Secured, HasResources {
     description?: string;
     version?: string;
     baseUri?: string;
-    baseUriParameters: TypeLibrary;
+    // baseUriParameters: TypeMap;
     protocols: string[];
     mediaType?: string;
     documentation?: string;

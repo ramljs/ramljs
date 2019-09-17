@@ -67,20 +67,8 @@ traits:
         required: true
 
 types:
-  lat-long: # lat & long required; mutually exclusive with location
-    properties:
-      lat: number
-      long: number
-  loc: # location required; mutually exclusive with lat & long
-    properties:
-      location:
-  paging: # each is optional, not exclusive with anything
-    properties:
-      start?: number
-      page-size?: number
-
-  !include_all ./types/**/*
+  !include ./types/**/*
 
 securedBy: [oauth_1_0]
 
-!resources ./api
+#!resources ./api

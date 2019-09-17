@@ -1,5 +1,5 @@
 module.exports = {
-  spec: `
+  RAML: `
 #%RAML 1.0 Library
 
 annotationTypes:
@@ -51,31 +51,6 @@ types:
       homePlanet?:
         type: string
 
-  Human:
-    type: [Character, PlanetResident]
-    properties:
-      gender:
-        type: Gender
-        default: unknown
-
-  Alien:
-    type: [Character, PlanetResident]
-
-  Jedi:
-    type: Human
-    properties:
-      side:
-        type: Side
-
-  Droid:
-    type: Character
-    properties:
-      model:
-        type: string
-        required: true
-        description: Model of the droid
-      primaryFunction:
-        type: string  
   `,
 
   types: {

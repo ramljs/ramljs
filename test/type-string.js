@@ -1,10 +1,10 @@
 /* eslint-disable */
 const assert = require('assert');
-const TypeLibrary = require('../lib/types/TypeLibrary');
+const {Library} = require('../lib/spec/Library');
 
 describe('StringType', function() {
 
-  const library = new TypeLibrary();
+  const library = new Library();
 
   it('should apply type check', function() {
     const prm1 = library.createType({

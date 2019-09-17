@@ -1,5 +1,5 @@
 import * as spec10 from '../spec10';
-import TypeLibrary from './TypeLibrary';
+import {Library} from '../spec/Library';
 
 export interface IValidationError {
     message: string;
@@ -44,7 +44,7 @@ export declare type LogFunction = (err: IValidationError) => void;
 export declare type InternalValidateFunction = (v: any, path: string, error: LogFunction, ...args: any[]) => any;
 
 export default class AnyType {
-    protected _library: TypeLibrary;
+    protected _library: Library;
     type: AnyType[];
     attributes: {
         [index: string]: any;
@@ -56,7 +56,7 @@ export default class AnyType {
         [index: string]: AnyType;
     };
 
-    constructor(library?: TypeLibrary, decl?: spec10.TypeDeclaration);
+    constructor(library?: Library, decl?: spec10.TypeDeclaration);
 
     readonly name: any;
     readonly typeFamily: string;

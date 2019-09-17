@@ -1,10 +1,10 @@
 import AnyType from './AnyType';
-import TypeLibrary from "./TypeLibrary";
+import {Library} from '../spec/Library';
 import * as spec10 from '../spec10';
 
 export default class ArrayType extends AnyType {
     items?: AnyType;
 
-    constructor(library?: TypeLibrary, decl?: spec10.ArrayTypeDeclaration);
+    constructor(library?: Library, decl?: spec10.ArrayTypeDeclaration);
 
 }

@@ -1,7 +1,6 @@
 import Api from './Api';
 import {ApiElement} from './common';
-import TypeLibrary from '../types/TypeLibrary';
-import ObjectType from '../types/ObjectType';
+import ObjectType from '../type-system/ObjectType';
 import * as spec10 from "../spec10";
 
 export class HasResources {
@@ -15,7 +14,7 @@ export class Resource extends ApiElement, HasResources {
     relativeUri: string;
     methods: Method[];
     uriParameters: ObjectType;
-    types: TypeLibrary;
+    // types: TypeMap;
 
     constructor(api: Api, spec: spec10.Resource10);
 }

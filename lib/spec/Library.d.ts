@@ -1,14 +1,14 @@
 import Resource from './Resource';
-import TypeLibrary from '../types/TypeLibrary';
-import AnyType from "../types/AnyType";
+import AnyType from "../type-system/AnyType";
 
-declare class LibraryBase {
+export declare class LibraryBase {
     uses?: any;
     resourceTypes?: any;
-    types: TypeLibrary;
+    types: any;
     traits?: any;
     securitySchemes?: any;
     annotationTypes: { [index: string]: AnyType };
 }
 
-export = LibraryBase;
+export declare class Library extends LibraryBase {
+}

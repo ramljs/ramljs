@@ -1,7 +1,7 @@
 const characters = require('../../../../support/starwars/data/characters');
 
 module.exports = {
-  spec: `
+  RAML: `
   uriParameters:
     heroId:
       type: integer

@@ -1,9 +1,9 @@
 import AnyType, {IFunctionData, IValidatorGenerateOptions} from './AnyType';
-import TypeLibrary from './TypeLibrary';
+import {Library} from '../spec/Library';
 import * as spec10 from '../spec10';
 
 export default class DateType extends AnyType {
-    constructor(library?: TypeLibrary, decl?: spec10.DateTypeDeclaration);
+    constructor(library?: Library, decl?: spec10.DateTypeDeclaration);
 
     readonly baseType: string;
     readonly typeFamily: string;

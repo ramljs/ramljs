@@ -1,10 +1,10 @@
 /* eslint-disable */
 const assert = require('assert');
-const TypeLibrary = require('../lib/types/TypeLibrary');
+const {Library} = require('../lib/spec/Library');
 
 describe('BooleanType', function() {
 
-  const library = new TypeLibrary();
+  const library = new Library();
 
   it('should apply type check', function() {
     const typ1 = library.createType({

@@ -1,7 +1,7 @@
 import AnyType from './AnyType';
-import TypeLibrary from './TypeLibrary';
+import {Library} from '../spec/Library';
 import * as spec10 from '../spec10';
 
 export default class NumberType extends AnyType {
-    constructor(library?: TypeLibrary, decl?: spec10.NumberTypeDeclaration);
+    constructor(library?: Library, decl?: spec10.NumberTypeDeclaration);
 }
