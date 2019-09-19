@@ -1,13 +1,19 @@
 import AnyType from './AnyType';
-import {Library} from '../spec/Library';
-import * as spec10 from '../spec10';
 
 export default class ObjectType extends AnyType {
+    discriminator?: string;
+    discriminatorValue?: any;
+    additionalProperties?: boolean;
+    minProperties?: number;
+    maxProperties?: number;
+    typeOf: (value: any, t: ObjectType) => boolean;
     properties: {
         [index: string]: AnyType;
     };
-    typeOf: (t: ObjectType, value: any) => boolean;
 
-    constructor(library?: Library, decl?: spec10.ObjectTypeDeclaration);
+    addProperty(name: string, prop: object | AnyType): AnyType;
 
+    addProperties(properties: { [index: string]: object | AnyType });
+
+    protected _copyTo(target: ObjectType, overwrite?: boolean): void;
 }

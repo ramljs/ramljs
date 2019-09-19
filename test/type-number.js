@@ -1,13 +1,13 @@
 /* eslint-disable */
 const assert = require('assert');
-const {Library} = require('../lib/spec/Library');
+const TypeLibrary = require('../lib/type-system/TypeLibrary');
 
 describe('NumberType', function() {
 
-  const library = new Library();
+  const library = new TypeLibrary();
 
   it('should apply type check', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number'
     });
@@ -26,7 +26,7 @@ describe('NumberType', function() {
   });
 
   it('should throw error for non-number values in strict mode', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number'
     });
@@ -38,7 +38,7 @@ describe('NumberType', function() {
   });
 
   it('should coerce value to number type', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number'
     });
@@ -48,7 +48,7 @@ describe('NumberType', function() {
   });
 
   it('should coerce default value to number type', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       default: '0'
@@ -58,7 +58,7 @@ describe('NumberType', function() {
   });
 
   it('should allow enum values only if set', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       enum: [1, 2, 3]
@@ -71,7 +71,7 @@ describe('NumberType', function() {
   });
 
   it('should validate minimum', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       minimum: 5.5
@@ -83,7 +83,7 @@ describe('NumberType', function() {
   });
 
   it('should validate maximum', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       maximum: 5.5
@@ -95,7 +95,7 @@ describe('NumberType', function() {
   });
 
   it('should validate multipleOf', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       multipleOf: 0.1
@@ -107,7 +107,7 @@ describe('NumberType', function() {
   });
 
   it('should validate int8 format', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       format: 'int8'
@@ -124,7 +124,7 @@ describe('NumberType', function() {
   });
 
   it('should validate uint8 format', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       format: 'uint8'
@@ -141,7 +141,7 @@ describe('NumberType', function() {
   });
 
   it('should validate int16 format', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       format: 'int16'
@@ -158,7 +158,7 @@ describe('NumberType', function() {
   });
 
   it('should validate uint16 format', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       format: 'uint16'
@@ -175,7 +175,7 @@ describe('NumberType', function() {
   });
 
   it('should validate int format', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       format: 'int'
@@ -192,7 +192,7 @@ describe('NumberType', function() {
   });
 
   it('should validate int32 format', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       format: 'int32'
@@ -209,7 +209,7 @@ describe('NumberType', function() {
   });
 
   it('should validate uint32 format', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       format: 'uint32'
@@ -226,7 +226,7 @@ describe('NumberType', function() {
   });
 
   it('should validate uint64 format', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       format: 'uint64'

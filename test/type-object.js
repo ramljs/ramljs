@@ -1,12 +1,11 @@
 /* eslint-disable */
 const assert = require('assert');
-const {Library} = require('../lib/spec/Library');
+const TypeLibrary = require('../lib/type-system/TypeLibrary');
 
 describe('ObjectType', function() {
 
-  const library = new Library();
+  const library = new TypeLibrary();
   const obj1 = {a: 1, b: '2', c: 'c', d: [1, '2', 3.3], e: 1};
-  const val1 = {a: '1', b: 2, c: 'c', d: [1, '2', 3.3], e: true};
   const properties1 = {
     a: 'string',
     b: 'number',
@@ -16,7 +15,7 @@ describe('ObjectType', function() {
   };
 
   it('should apply type check', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'object'
     });
@@ -29,7 +28,7 @@ describe('ObjectType', function() {
   });
 
   it('should not allow additional properties if additionalProperties=false', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'object',
       properties: properties1,
@@ -43,7 +42,7 @@ describe('ObjectType', function() {
   });
 
   it('should remove additional properties if removeAdditional=true', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'object',
       properties: properties1
@@ -58,7 +57,7 @@ describe('ObjectType', function() {
   });
 
   it('should allow additional properties if additionalProperties=true', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'object',
       properties: properties1
@@ -68,7 +67,7 @@ describe('ObjectType', function() {
   });
 
   it('should validate minProperties', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'object',
       minProperties: 2
@@ -79,7 +78,7 @@ describe('ObjectType', function() {
   });
 
   it('should validate maxProperties', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'object',
       maxProperties: 2
@@ -90,7 +89,7 @@ describe('ObjectType', function() {
   });
 
   it('should validate properties', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       properties: {
         'id': {type: 'string', required: true},
@@ -108,35 +107,35 @@ describe('ObjectType', function() {
   });
 
   it('should find right object in union using discriminator', function() {
-    library.addTypes(
-      {
-        name: 'Person',
-        type: 'object',
-        discriminator: 'kind',
-        properties: {
-          name: 'string',
-          kind: 'string'
+    library.add(
+        {
+          name: 'Person',
+          type: 'object',
+          discriminator: 'kind',
+          properties: {
+            name: 'string',
+            kind: 'string'
+          }
+        },
+        {
+          name: 'Employee',
+          type: 'Person',
+          discriminatorValue: 'employee',
+          properties: {
+            employeeId: 'string'
+          }
+        },
+        {
+          name: 'User',
+          type: 'Person',
+          discriminatorValue: 'user',
+          properties: {
+            userId: 'string'
+          }
         }
-      },
-      {
-        name: 'Employee',
-        type: 'Person',
-        discriminatorValue: 'employee',
-        properties: {
-          employeeId: 'string'
-        }
-      },
-      {
-        name: 'User',
-        type: 'Person',
-        discriminatorValue: 'user',
-        properties: {
-          userId: 'string'
-        }
-      }
     );
 
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'Employee',
       additionalProperties: false
@@ -148,7 +147,8 @@ describe('ObjectType', function() {
         /Object`s discriminator property \(kind\) does not match to "employee"/);
     assert.throws(() => validate({name: 'name'}),
         /Object`s discriminator property \(kind\) does not match to "employee"/);
-    assert.deepStrictEqual(validate({
+    assert.deepStrictEqual(
+        validate({
           kind: 'employee',
           name: 'name',
           employeeId: 1
@@ -157,32 +157,32 @@ describe('ObjectType', function() {
   });
 
   it('should find right type using typeOf method', function() {
-    const library = new Library();
-    library.addTypes(
-      {
-        name: 'Employee',
-        properties: {
-          name: 'string',
-          kind: 'string',
-          employeeId: 'string'
+    const library = new TypeLibrary();
+    library.add(
+        {
+          name: 'Employee',
+          properties: {
+            name: 'string',
+            kind: 'string',
+            employeeId: 'string'
+          }
+        },
+        {
+          name: 'User',
+          properties: {
+            name: 'string',
+            kind: 'string',
+            userId: 'string'
+          }
         }
-      },
-      {
-        name: 'User',
-        properties: {
-          name: 'string',
-          kind: 'string',
-          userId: 'string'
-        }
-      }
     );
 
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
-      type: library.createType({
+      type: library.create({
         type: 'union',
         anyOf: ['Employee', 'User']
-      }), typeOf: (t, v) => {
+      }), typeOf: (v, t) => {
         if (t.properties.userId)
           return !!v.userId;
         if (t.properties.employeeId)

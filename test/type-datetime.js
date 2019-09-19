@@ -1,13 +1,13 @@
 /* eslint-disable */
 const assert = require('assert');
-const {Library} = require('../lib/spec/Library');
+const TypeLibrary = require('../lib/type-system/TypeLibrary');
 
 describe('DateTimeType', function() {
 
-  const library = new Library();
+  const library = new TypeLibrary();
 
   it('should apply type check', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'datetime'
     });
@@ -49,7 +49,7 @@ describe('DateTimeType', function() {
   });
 
   it('should apply type check in fast mode', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'datetime'
     });
@@ -94,7 +94,7 @@ describe('DateTimeType', function() {
   });
 
   it('should coerce value to datetime type', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'datetime'
     });
@@ -114,7 +114,7 @@ describe('DateTimeType', function() {
   });
 
   it('should coerce value to datetime type in fast mode', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'datetime'
     });
@@ -137,7 +137,7 @@ describe('DateTimeType', function() {
   });
 
   it('should coerce default value to datetime type', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'datetime',
       default: '2011-01-02'
@@ -149,12 +149,12 @@ describe('DateTimeType', function() {
     });
   });
 
-  it('should coerce value to Date instance if coerceJSTypes=true', function() {
-    const prm1 = library.createType({
+  it('should coerce value to Date instance if convertDates=true', function() {
+    const prm1 = library.create({
       name: 'prm1',
       type: 'datetime'
     });
-    const validate = prm1.validator({coerceJSTypes: true});
+    const validate = prm1.validator({convertDates: true});
     assert.deepStrictEqual(validate('2011-01-02T10:30:15.123Z'),
         {valid: true, value: new Date('2011-01-02T10:30:15.123Z')});
     assert.deepStrictEqual(validate('2011-01-02T10:30:15.123+01:00'),
@@ -169,13 +169,13 @@ describe('DateTimeType', function() {
         {valid: true, value: new Date('2011-01-02T00:00:00.000Z')});
   });
 
-  it('should coerce default value to Date instance if coerceJSTypes=true', function() {
-    const prm1 = library.createType({
+  it('should coerce default value to Date instance if convertDates=true', function() {
+    const prm1 = library.create({
       name: 'prm1',
       type: 'datetime',
       default: '2011-01-02'
     });
-    const validate = prm1.validator({coerceJSTypes: true});
+    const validate = prm1.validator({convertDates: true});
     assert.deepStrictEqual(validate(),
         {valid: true, value: new Date('2011-01-02T00:00:00.000Z')});
   });

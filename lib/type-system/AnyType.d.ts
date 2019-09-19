@@ -1,5 +1,4 @@
-import * as spec10 from '../spec10';
-import {Library} from '../spec/Library';
+import TypeLibrary from './TypeLibrary';
 
 export interface IValidationError {
     message: string;
@@ -15,7 +14,7 @@ export interface IValidatorOptions {
     throwOnError?: boolean;
     strictTypes?: boolean;
     coerceTypes?: boolean;
-    coerceJSTypes?: boolean;
+    convertDates?: boolean;
     removeAdditional?: boolean | 'all';
     fastDateValidation?: boolean;
     fastObjectValidation?: boolean;
@@ -44,24 +43,19 @@ export declare type LogFunction = (err: IValidationError) => void;
 export declare type InternalValidateFunction = (v: any, path: string, error: LogFunction, ...args: any[]) => any;
 
 export default class AnyType {
-    protected _library: Library;
+    protected _library: TypeLibrary;
     type: AnyType[];
-    attributes: {
-        [index: string]: any;
-    };
-    annotations: {
-        [index: string]: any;
-    };
-    facets: {
-        [index: string]: AnyType;
-    };
 
-    constructor(library?: Library, decl?: spec10.TypeDeclaration);
+    constructor(library?: TypeLibrary, def?: any);
 
-    readonly name: any;
-    readonly typeFamily: string;
     readonly baseType: string;
-    readonly storedType: string;
+    readonly subType: string;
+    name: string;
+    displayName: string;
+    required?: boolean;
+    default?: any;
+    readonly?: boolean;
+    writeonly?: boolean;
 
     clone(): AnyType;
 
@@ -69,15 +63,11 @@ export default class AnyType {
 
     set(n: string, value: any): void;
 
-    hasFacet(n: string): boolean;
-
-    getUserDefinedFacet(n: string): AnyType;
-
     flatten(): AnyType[];
 
     validator(options?: IValidatorOptions): ValidateFunction;
 
-    protected _mergeOnto(target: AnyType, overwrite?: boolean): void;
+    protected _copyTo(target: AnyType, overwrite?: boolean): void;
 
     protected _generateValidateFunction(options: IValidatorOptions): InternalValidateFunction;
 

@@ -1,13 +1,13 @@
 /* eslint-disable */
 const assert = require('assert');
-const {Library} = require('../lib/spec/Library');
+const TypeLibrary = require('../lib/type-system/TypeLibrary');
 
 describe('TimeOnlyType', function() {
 
-  const library = new Library();
+  const library = new TypeLibrary();
 
   it('should apply type check', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'time-only'
     });
@@ -30,7 +30,7 @@ describe('TimeOnlyType', function() {
   });
 
   it('should apply type check in fast mode', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'time-only'
     });
@@ -56,7 +56,7 @@ describe('TimeOnlyType', function() {
   });
 
   it('should coerce value to time-only type', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'time-only'
     });
@@ -73,7 +73,7 @@ describe('TimeOnlyType', function() {
   });
 
   it('should coerce value to time-only type in fast mode', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'time-only'
     });
@@ -93,7 +93,7 @@ describe('TimeOnlyType', function() {
   });
 
   it('should coerce default value to time-only type', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'time-only',
       default: '10:30:00.123'
@@ -106,12 +106,12 @@ describe('TimeOnlyType', function() {
     });
   });
 
-  it('should coerce value to Date instance if coerceJSTypes=true', function() {
-    const prm1 = library.createType({
+  it('should coerce value to Date instance if convertDates=true', function() {
+    const prm1 = library.create({
       name: 'prm1',
       type: 'time-only'
     });
-    const validate = prm1.validator({coerceJSTypes: true});
+    const validate = prm1.validator({convertDates: true});
     assert.deepStrictEqual(validate('10:30'),
         {valid: true, value: new Date('1970-01-01T10:30:00.000Z')});
     assert.deepStrictEqual(validate('10:30:11'),
@@ -120,13 +120,13 @@ describe('TimeOnlyType', function() {
         {valid: true, value: new Date('1970-01-01T10:30:11.123Z')});
   });
 
-  it('should coerce default value to Date instance if coerceJSTypes=true', function() {
-    const prm1 = library.createType({
+  it('should coerce default value to Date instance if convertDates=true', function() {
+    const prm1 = library.create({
       name: 'prm1',
       type: 'time-only',
       default: '10:30:11.123'
     });
-    const validate = prm1.validator({coerceJSTypes: true});
+    const validate = prm1.validator({convertDates: true});
     assert.deepStrictEqual(validate(), {
       valid: true,
       value: new Date('1970-01-01T10:30:11.123Z')

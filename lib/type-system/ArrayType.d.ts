@@ -1,10 +1,11 @@
 import AnyType from './AnyType';
-import {Library} from '../spec/Library';
-import * as spec10 from '../spec10';
 
 export default class ArrayType extends AnyType {
     items?: AnyType;
+    minItems?: number;
+    maxItems?: number;
+    uniqueItems?: boolean;
 
-    constructor(library?: Library, decl?: spec10.ArrayTypeDeclaration);
+    protected _copyTo(target: ArrayType, overwrite?: boolean): void;
 
 }

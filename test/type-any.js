@@ -1,43 +1,30 @@
 /* eslint-disable */
 const assert = require('assert');
-const {Library} = require('../lib/spec/Library');
+const TypeLibrary = require('../lib/type-system/TypeLibrary');
 
 describe('AnyType', function() {
 
-  const library = new Library();
+  const library = new TypeLibrary();
 
   it('should assign default facets', function() {
-    let typ1 = library.createType({
-      name: 'typ1',
+    let typ1 = library.create({
       type: 'any',
+      name: 'typ1',
       displayName: 'displayName',
       description: 'description',
       example: 'example',
       required: true,
-      default: 0,
-      enum: [0, 1, 2],
-      annotations: [{name: 'a', value: 1}],
-      facets: [{name: 'facet1', type: 'any'}]
+      default: 0
     });
     assert.strictEqual(typ1.name, 'typ1');
     assert.strictEqual(typ1.baseType, 'any');
-    assert.strictEqual(typ1.attributes.displayName, 'displayName');
-    assert.strictEqual(typ1.attributes.description, 'description');
-    assert.strictEqual(typ1.attributes.example, 'example');
-    assert.strictEqual(typ1.attributes.required, true);
-    assert.strictEqual(typ1.attributes.default, 0);
-    assert.deepStrictEqual(typ1.annotations, {a: 1});
-    assert.deepStrictEqual(typ1.facets.facet1.baseType, 'any');
-    typ1 = library.createType({
-      name: 'typ1',
-      type: 'any',
-      examples: ['examples']
-    });
-    assert.deepStrictEqual(typ1.attributes.examples, ['examples']);
+    assert.strictEqual(typ1.displayName, 'displayName');
+    assert.strictEqual(typ1.required, true);
+    assert.strictEqual(typ1.default, 0);
   });
 
   it('should use default value if given value is null', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'any',
       required: true,
@@ -48,7 +35,7 @@ describe('AnyType', function() {
   });
 
   it('should not validate null value if required=true', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'any',
       required: true
@@ -61,7 +48,7 @@ describe('AnyType', function() {
   });
 
   it('should return "errors" property on error', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'any',
       required: true
@@ -78,15 +65,15 @@ describe('AnyType', function() {
   });
 
   it('should types inherit from compatible types', function() {
-    library.addType({
+    library.add({
       name: 'bool1',
       type: 'boolean'
     });
-    library.createType({
+    library.create({
       name: 'typ1',
       type: ['boolean', 'bool1']
     });
-    library.createType({
+    library.create({
       name: 'typ1',
       type: ['bool1', 'boolean']
     });
@@ -95,7 +82,7 @@ describe('AnyType', function() {
   it('should not inherit from incompatible types', function() {
     const tryType = (t) => {
       assert.throws(() =>
-          library.createType({
+          library.create({
             name: 'typ1',
             type: ['boolean', t]
           }), new RegExp('Can\'t extend boolean type from ' + t));

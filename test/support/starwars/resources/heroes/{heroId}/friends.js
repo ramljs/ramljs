@@ -1,7 +1,7 @@
 const characters = require('../../../../../support/starwars/data/characters');
 
 module.exports = {
-  RAML: `
+  raml: `
   get:
     description: List friends of hero
     queryParameters:

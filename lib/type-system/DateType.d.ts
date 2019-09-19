@@ -1,22 +1,14 @@
-import AnyType, {IFunctionData, IValidatorGenerateOptions} from './AnyType';
-import {Library} from '../spec/Library';
-import * as spec10 from '../spec10';
+import AnyType from './AnyType';
 
 export default class DateType extends AnyType {
-    constructor(library?: Library, decl?: spec10.DateTypeDeclaration);
-
-    readonly baseType: string;
-    readonly typeFamily: string;
-
-    protected _generateValidationCode(options: IValidatorGenerateOptions): IFunctionData;
 
     protected _formatDate(): (d: Date) => string;
 
-    protected _formatDateItems(): (m: string[]) => string;
+    protected _formatDateItems(): (m: number[]) => string;
 
-    protected _dateItemsToISO(): (m: string[]) => string;
+    protected _dateItemsToISO(m: number[]): string;
 
-    protected _matchDatePattern(strictTypes?: boolean): (v: string) => RegExpMatchArray;
+    protected _matchDatePattern(): (v: string) => number[];
 }
 
 export declare function isValidDate(d: Date | void): boolean;

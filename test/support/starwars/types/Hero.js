@@ -1,11 +1,11 @@
 module.exports = {
-  RAML: `
+  raml: `
 #%RAML 1.0 DataType
-type: Human | Starwars.Jedi | Starwars.Droid
+type: Human | Jedi | Droid
   `,
 
   description: 'A Hero in Starwars',
-  typeOf: (t, v)=> {
+  typeOf: (t, v) => {
     if (t.properties.side)
       return !!v.side;
     if (t.properties.model)

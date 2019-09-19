@@ -1,12 +1,12 @@
 /* eslint-disable */
 const assert = require('assert');
-const {Library} = require('../lib/spec/Library');
+const TypeLibrary = require('../lib/type-system/TypeLibrary');
 
 describe('ArrayType', function() {
-  const library = new Library();
+  const library = new TypeLibrary();
 
   it('should accept any types in non strict mode', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'array'
     });
@@ -20,7 +20,7 @@ describe('ArrayType', function() {
   });
 
   it('should throw error for non-array values in strict mode', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'array'
     });
@@ -34,7 +34,7 @@ describe('ArrayType', function() {
   });
 
   it('should validate item type', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'array',
       items: 'string'
@@ -47,7 +47,7 @@ describe('ArrayType', function() {
   });
 
   it('should coerce value to array type', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'array'
     });
@@ -61,7 +61,7 @@ describe('ArrayType', function() {
   });
 
   it('should coerce sub items', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'array',
       items: 'string'
@@ -74,7 +74,7 @@ describe('ArrayType', function() {
   });
 
   it('should coerce default value to array type', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'array',
       default: 1
@@ -84,7 +84,7 @@ describe('ArrayType', function() {
   });
 
   it('should validate min item count', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'array',
       minItems: 2
@@ -96,7 +96,7 @@ describe('ArrayType', function() {
   });
 
   it('should validate min item count', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'array',
       maxItems: 2
@@ -108,7 +108,7 @@ describe('ArrayType', function() {
   });
 
   it('should validate unique items', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'array',
       uniqueItems: true

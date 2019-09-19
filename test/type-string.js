@@ -1,13 +1,13 @@
 /* eslint-disable */
 const assert = require('assert');
-const {Library} = require('../lib/spec/Library');
+const TypeLibrary = require('../lib/type-system/TypeLibrary');
 
 describe('StringType', function() {
 
-  const library = new Library();
+  const library = new TypeLibrary();
 
   it('should apply type check', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'string'
     });
@@ -25,7 +25,7 @@ describe('StringType', function() {
   });
 
   it('should throw error for non-string values in strict mode', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'string'
     });
@@ -39,7 +39,7 @@ describe('StringType', function() {
   });
 
   it('should coerce value to string type', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'string'
     });
@@ -52,7 +52,7 @@ describe('StringType', function() {
   });
 
   it('should coerce default value to string type', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'string',
       default: 1
@@ -62,7 +62,7 @@ describe('StringType', function() {
   });
 
   it('should allow enum values only if set', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'string',
       enum: ['a', 'b']
@@ -75,7 +75,7 @@ describe('StringType', function() {
   });
 
   it('should validate min length', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'string',
       minLength: 5
@@ -87,7 +87,7 @@ describe('StringType', function() {
   });
 
   it('should validate max length', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'string',
       maxLength: 5
@@ -99,7 +99,7 @@ describe('StringType', function() {
   });
 
   it('should validate patterns', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'string',
       pattern: ['[abcd]+', '[1234]']

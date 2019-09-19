@@ -1,13 +1,13 @@
 /* eslint-disable */
 const assert = require('assert');
-const {Library} = require('../lib/spec/Library');
+const TypeLibrary = require('../lib/type-system/TypeLibrary');
 
 describe('BooleanType', function() {
 
-  const library = new Library();
+  const library = new TypeLibrary();
 
   it('should apply type check', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'boolean'
     });
@@ -26,7 +26,7 @@ describe('BooleanType', function() {
   });
 
   it('should throw error for non-boolean values in strict mode', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'boolean'
     });
@@ -42,7 +42,7 @@ describe('BooleanType', function() {
   });
 
   it('should coerce value to boolean type', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'boolean'
     });
@@ -56,7 +56,7 @@ describe('BooleanType', function() {
   });
 
   it('should coerce default value to boolean type', function() {
-    const typ1 = library.createType({
+    const typ1 = library.create({
       name: 'typ1',
       type: 'boolean',
       default: 1

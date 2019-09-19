@@ -1,7 +1,7 @@
 const characters = require('../../../support/starwars/data/characters');
 
 module.exports = {
-  RAML: `
+  raml: `
   #%RAML 1.0 Resource
   type: { resourceCollection: { outputResource: Hero } }
   is: [ secured ]  

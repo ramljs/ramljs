@@ -1,13 +1,13 @@
 /* eslint-disable */
 const assert = require('assert');
-const {Library} = require('../lib/spec/Library');
+const TypeLibrary = require('../lib/type-system/TypeLibrary');
 
 describe('IntegerType', function() {
 
-  const library = new Library();
+  const library = new TypeLibrary();
 
   it('should apply type check', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'integer'
     });
@@ -27,7 +27,7 @@ describe('IntegerType', function() {
   });
 
   it('should throw error for non-integer values in strict mode', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'integer'
     });
@@ -40,7 +40,7 @@ describe('IntegerType', function() {
   });
 
   it('should coerce value to integer type', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number'
     });
@@ -50,7 +50,7 @@ describe('IntegerType', function() {
   });
 
   it('should coerce default value to number type', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'number',
       default: '0'
@@ -59,35 +59,32 @@ describe('IntegerType', function() {
     assert.deepStrictEqual(validate(), {valid: true, value: 0});
   });
 
-  it('should validate minimum property is an integer', function() {
-    assert.throws(() =>
-        library.createType({
-          name: 'prm1',
-          type: 'integer',
-          minimum: 5.5
-        }), /minimum property must be an integer/);
+  it('should set minimum property as integer', function() {
+    assert.strictEqual(library.create({
+      name: 'prm1',
+      type: 'integer',
+      minimum: 5.5
+    }).minimum, 5);
   });
 
-  it('should validate maximum property is an integer', function() {
-    assert.throws(() =>
-        library.createType({
-          name: 'prm1',
-          type: 'integer',
-          maximum: 5.5
-        }), /maximum property must be an integer/);
+  it('should set maximum property as integer', function() {
+    assert.strictEqual(library.create({
+      name: 'prm1',
+      type: 'integer',
+      maximum: 5.5
+    }).maximum, 5);
   });
 
-  it('should validate maximum property is an integer', function() {
-    assert.throws(() =>
-        library.createType({
-          name: 'prm1',
-          type: 'integer',
-          multipleOf: 5.5
-        }), /multipleOf property must be an integer/);
+  it('should set maximum property as integer', function() {
+    assert.strictEqual(library.create({
+      name: 'prm1',
+      type: 'integer',
+      multipleOf: 5.5
+    }).multipleOf, 5);
   });
 
   it('should validate minimum', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'integer',
       minimum: 5
@@ -99,7 +96,7 @@ describe('IntegerType', function() {
   });
 
   it('should validate minimum limit', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'integer'
     });
@@ -109,7 +106,7 @@ describe('IntegerType', function() {
   });
 
   it('should validate maximum', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'integer',
       maximum: 5
@@ -121,7 +118,7 @@ describe('IntegerType', function() {
   });
 
   it('should validate maximum limit', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'integer'
     });
@@ -131,7 +128,7 @@ describe('IntegerType', function() {
   });
 
   it('should validate multipleOf', function() {
-    const prm1 = library.createType({
+    const prm1 = library.create({
       name: 'prm1',
       type: 'integer',
       multipleOf: 10

@@ -1,5 +1,5 @@
 module.exports = {
-  RAML: `
+  raml: `
 #%RAML 1.0 Library
 
 annotationTypes:
