@@ -120,4 +120,16 @@ describe('ArrayType', function() {
         /Unique array contains non-unique items/);
   });
 
+  it('should create array type by adding [] after type name', function() {
+    const prm1 = library.create({
+      name: 'prm1',
+      type: 'string[]'
+    });
+    const arr = ['1', '2', '3'];
+    const validate = prm1.validator({throwOnError: true});
+    assert.deepStrictEqual(validate(arr), {valid: true, value: arr});
+    assert.strictEqual(validate(arr).value, arr);
+    assert.deepStrictEqual(validate(''), {valid: true, value: ''});
+  });
+
 });

@@ -4,14 +4,16 @@ const TypeLibrary = require('../lib/type-system/TypeLibrary');
 
 describe('ObjectType', function() {
 
-  const library = new TypeLibrary();
+  const library = new TypeLibrary({
+    defaults: {required: true}
+  });
   const obj1 = {a: 1, b: '2', c: 'c', d: [1, '2', 3.3], e: 1};
   const properties1 = {
-    a: 'string',
-    b: 'number',
-    c: 'string',
-    d: 'array',
-    e: 'boolean'
+    'a?': 'string',
+    'b?': 'number',
+    'c?': 'string',
+    'd?': 'array',
+    'e?': 'boolean'
   };
 
   it('should apply type check', function() {
@@ -64,6 +66,24 @@ describe('ObjectType', function() {
     });
     const validate = typ1.validator({throwOnError: true});
     validate({...obj1, f: 'f'});
+  });
+
+  it('should use regexp patterns as property names', function() {
+    const typ1 = library.create({
+      name: 'typ1',
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        '/a[\\d]/': 'any'
+      }
+    });
+    const validate = typ1.validator({
+      throwOnError: true,
+      removeAdditional: true
+    });
+    assert.deepStrictEqual(
+        validate({a1: 1, a2: 2, b1: 3}).value,
+        {a1: 1, a2: 2});
   });
 
   it('should validate minProperties', function() {
