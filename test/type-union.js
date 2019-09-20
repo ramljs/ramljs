@@ -6,14 +6,14 @@ describe('UnionType', function() {
 
   const library = new TypeLibrary();
 
-  it('should get subType', function() {
+  it('should get storedType', function() {
     const prm1 = library.create({
       name: 'prm1',
       type: 'union',
       anyOf: ['string']
     });
     const validate = prm1.validator({throwOnError: true});
-    assert.deepStrictEqual(prm1.subType, 'string');
+    assert.deepStrictEqual(prm1.storedType, 'string');
   });
 
 });

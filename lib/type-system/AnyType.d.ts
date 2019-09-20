@@ -49,7 +49,7 @@ export default class AnyType {
     constructor(library?: TypeLibrary, def?: any);
 
     readonly baseType: string;
-    readonly subType: string;
+    readonly storedType: string;
     name: string;
     displayName: string;
     required?: boolean;

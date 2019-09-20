@@ -1,0 +1,75 @@
+UriParameter:
+  type: object
+
+Api:
+  type: Annotated
+  properties:
+    METADATA?: any
+    title: string
+    description?: string
+    version?: string
+    baseUri?: string
+    baseUriParameters?: DataType{}
+    protocols?: string[]
+    mediaType?: string
+    documentation?: UserDocumentation[]
+    types?: any
+    traits?: Trait{}
+    resourceTypes?: ResourceType{}
+    annotationTypes?: DataType{}
+    securitySchemes?: any
+    securedBy?: any
+    uses?: any
+    /^\/.*/: Resource
+
+Annotation:
+  type: object
+
+Annotated:
+  properties:
+    /\([^)]+\)/: string
+
+UserDocumentation:
+  properties:
+    title: string
+    content: string
+
+ResourceType:
+  type: Annotated
+  properties:
+    usage?: string
+    displayName?: string
+    description?: string
+    get?: any
+    patch?: any
+    put?: any
+    post?: any
+    delete?: any
+    options?: any
+    head?: any
+    is?: string[]
+    type?: string[]
+    securedBy?: string[]
+    uriParameters?: any
+
+Resource:
+  type: [ResourceType, Annotated]
+  properties:
+    /^\/.*/: any
+
+Trait:
+  type: Annotated
+
+DataType:
+  type: Annotated
+  properties:
+    default?: any
+    type?:
+      type: array
+      items: string | DataType
+    example?: string
+    examples?: string[]
+    displayName?: string
+    description?: string
+
+

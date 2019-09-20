@@ -39,7 +39,7 @@ describe('ObjectType', function() {
     const validate = typ1.validator({throwOnError: true});
     assert.throws(() =>
             validate({...obj1, f: 'f'}),
-        /Object type does not allow additional properties/
+        /typ1 does not allow additional property/
     );
   });
 
@@ -227,6 +227,19 @@ describe('ObjectType', function() {
           userId: 1
         }).value,
         {name: 'name', userId: 1});
+  });
+
+  it('should create object type by adding {} after type name', function() {
+    const prm1 = library.create({
+      name: 'prm1',
+      type: 'string{}'
+    });
+    const obj = {a: 1, b: 2, c: 3};
+    const validate = prm1.validator({throwOnError: true, coerceTypes: true});
+    assert.deepStrictEqual(validate(obj), {
+      valid: true,
+      value: {a: '1', b: '2', c: '3'}
+    });
   });
 
 });
